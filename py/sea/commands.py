@@ -1082,7 +1082,9 @@ class Seahorn(sea.LimitedCmd):
         ap.add_argument ('--crab-log', dest='crab_log', default=None,
                          metavar='STR', help='Log level for crab')
         ap.add_argument ('--oll', dest='asm_out_file', default=None,
-                         help='LLVM assembly output file')
+                         help='LLVM assembly output file for the analyzed program')
+        ap.add_argument ('--ofixed', dest='repaired_asm_out_file', default=None,
+                         help='LLVM assembly output file for the repaired program')
         ap.add_argument ('--step',
                          help='Step to use for encoding',
                          choices=['small', 'large', 'fsmall', 'flarge', 'incsmall'],
@@ -1223,6 +1225,8 @@ class Seahorn(sea.LimitedCmd):
             if args.fence_hints != '':
                 argv.append('--fence-hints={0}'.format (args.fence_hints))
             argv.append('--in-place-training={0}'.format (args.in_place_training))
+
+        if args.repaired_asm_out_file is not None: argv.extend (['--ofixed', args.repaired_asm_out_file])
 
         argv.extend (['-horn-inter-proc',
                       '-horn-sem-lvl={0}'.format (args.track),

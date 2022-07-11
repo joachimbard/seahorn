@@ -111,6 +111,7 @@ llvm::Pass *createCHAPass();
 llvm::ModulePass *createDebugVerifierPass(int instanceID, llvm::StringRef name);
 llvm::Pass *createUnifyAssumesPass();
 llvm::Pass *createSpeculativeExe();
+llvm::Pass *createStripSpeculativeExe();
 llvm::Pass *createStaticTaintPass(bool bPrint);
 } // namespace seahorn
 

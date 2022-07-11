@@ -33,6 +33,7 @@
 #include "seahorn/Passes.hh"
 #include "seahorn/PredicateAbstraction.hh"
 #include "seahorn/Support/SeaLog.hh"
+#include "seahorn/Transforms/Instrumentation/StripSpeculative.hh"
 #include "seahorn/Transforms/Scalar/LowerCstExpr.hh"
 #include "seahorn/Transforms/Scalar/LowerGvInitializers.hh"
 #include "seahorn/Transforms/Scalar/PromoteVerifierCalls.hh"
@@ -109,6 +110,10 @@ static llvm::cl::opt<std::string>
 
 static llvm::cl::opt<std::string>
     AsmOutputFilename("oll", llvm::cl::desc("Output analyzed bitcode"),
+                      llvm::cl::init(""), llvm::cl::value_desc("filename"));
+
+static llvm::cl::opt<std::string>
+    RepairedAsmOutputFilename("ofixed", llvm::cl::desc("Output repaired bitcode"),
                       llvm::cl::init(""), llvm::cl::value_desc("filename"));
 
 static llvm::cl::opt<std::string> DefaultDataLayout(
@@ -242,6 +247,7 @@ int main(int argc, char **argv) {
   std::unique_ptr<llvm::Module> module;
   std::unique_ptr<llvm::ToolOutputFile> output;
   std::unique_ptr<llvm::ToolOutputFile> asmOutput;
+  std::unique_ptr<llvm::ToolOutputFile> repairedAsmOutput;
 
   module = llvm::parseIRFile(InputFilename, err, context);
   if (module.get() == 0) {
@@ -261,6 +267,19 @@ int main(int argc, char **argv) {
     if (llvm::errs().has_colors())
       llvm::errs().changeColor(llvm::raw_ostream::RED);
     llvm::errs() << "error: Could not open " << AsmOutputFilename << ": "
+                 << error_code.message() << "\n";
+    if (llvm::errs().has_colors())
+      llvm::errs().resetColor();
+    return 3;
+  }
+
+  if (!RepairedAsmOutputFilename.empty())
+    repairedAsmOutput = std::make_unique<llvm::ToolOutputFile>(
+        RepairedAsmOutputFilename.c_str(), error_code, llvm::sys::fs::F_Text);
+  if (error_code) {
+    if (llvm::errs().has_colors())
+      llvm::errs().changeColor(llvm::raw_ostream::RED);
+    llvm::errs() << "error: Could not open " << RepairedAsmOutputFilename << ": "
                  << error_code.message() << "\n";
     if (llvm::errs().has_colors())
       llvm::errs().resetColor();
@@ -496,11 +515,18 @@ int main(int argc, char **argv) {
       pass_manager.add(new seahorn::HornSolver());
       if (Cex)
         pass_manager.add(new seahorn::HornCex());
+      if (!RepairedAsmOutputFilename.empty()) {
+        pass_manager.add(seahorn::createStripShadowMemPass());
+        pass_manager.add(seahorn::createStripSpeculativeExe());
+        pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
+      }
     }
   }
 
   pass_manager.run(*module.get());
 
+  if (!RepairedAsmOutputFilename.empty())
+    repairedAsmOutput->keep();
   if (!AsmOutputFilename.empty())
     asmOutput->keep();
   if (!OutputFilename.empty())

@@ -42,6 +42,8 @@ public:
   ZFixedPoint<EZ3> &getZFixedPoint() { return *m_fp; }
 
   boost::tribool getResult() { return m_result; }
+  std::vector<std::string> *getInsertedFences() { return &m_inserted_fences; }
+
   void releaseMemory() {
     m_fp.reset(nullptr);
     m_local_ctx.reset(nullptr);
