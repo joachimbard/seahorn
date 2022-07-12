@@ -41,53 +41,46 @@ bool StripSpeculative::runOnModule(llvm::Module& M) {
   verifyModule(M, &errs());
   return change;
 }
+
 bool StripSpeculative::runOnFunction(llvm::Function& F) {
-  outs() << "run on function " << F.getName() << "\n";
+  m_instructionsToRemove.clear();
   StringRef name = F.getName();
-  // Todo: remove also functions starting with seahorn., verifier., sea.,...
-  if (name.startswith("fence_") || name.startswith("sea.")) {
+  outs() << "run on function " << name << "\n";
+  if (name.startswith("fence_")) {
+    for (User* U : F.users()) {
+      outs() << "process user " << *U << "\n";
+      Instruction* I = dyn_cast<Instruction>(U);
+      if (!I) {
+        errs() << "user not an instruction " << *U << "\n";
+        errs().flush();
+      }
+      // if name is contained in the set of inserted fences then insert lfence
+      for (std::string fenceName : *m_inserted_fences) {
+        if (name.equals(fenceName)) {
+          StringRef constraints = "~{dirflag},~{fpsr},~{flags}";
+          InlineAsm *fenceAsm =
+              InlineAsm::get(m_asmTy, "lfence", constraints, true);
+          m_builder->SetInsertPoint(I);
+          // add lfence
+          Value *fenceInst = m_builder->CreateCall(fenceAsm, None, fenceName);
+          outs() << "inserted " << *fenceInst << "\n";
+          break;
+        }
+      }
+      m_instructionsToRemove.push_back(I);
+    }
+    for (Instruction* I : m_instructionsToRemove) {
+      eraseInstructionRec(I);
+    }
     m_functionsToRemove.push_back(&F);
     return true;
   }
-  bool change = false;
-  for (llvm::BasicBlock& BB : F) {
-    change |= runOnBasicBlock(BB);
+  if (name.startswith("sea.")) {
+    // Todo: remove also functions starting with seahorn., verifier., sea.,...
+    m_functionsToRemove.push_back(&F);
+    return true;
   }
-  for (Instruction* I : m_instructionsToRemove) {
-    eraseInstructionRec(I);
-  }
-  m_instructionsToRemove.clear();
-  return change;
-}
-
-bool StripSpeculative::runOnBasicBlock(llvm::BasicBlock& BB) {
-  bool change = false;
-  for (Instruction& I : BB) {
-    // Todo: restore original control flow
-    if (CallInst* CI = dyn_cast<CallInst>(&I)) {
-      if (Function* F = CI->getCalledFunction()) {
-        StringRef name = F->getName();
-        if (name.startswith("fence_")) {
-          outs() << "found function call to " << name << "\n";
-          // if name is contained in the set of inserted fences then insert lfence
-          for (std::string fenceName : *m_inserted_fences) {
-            if (name.equals(fenceName)) {
-              // m_builder add lfence
-              StringRef constraints = "~{dirflag},~{fpsr},~{flags}";
-              InlineAsm* fenceAsm = InlineAsm::get(m_asmTy, "lfence", constraints, true);
-              m_builder->SetInsertPoint(&I);
-              Value* fenceInst = m_builder->CreateCall(fenceAsm, None, fenceName);
-              outs() << "inserted " << *fenceInst << "\n";
-              break;
-            }
-          }
-          m_instructionsToRemove.push_back(&I);
-          change = true;
-        }
-      }
-    }
-  }
-  return change;
+  return false;
 }
 
 void StripSpeculative::getAnalysisUsage(llvm::AnalysisUsage& AU) const {
@@ -101,7 +94,7 @@ void StripSpeculative::eraseInstructionRec(Instruction* I) {
       eraseInstructionRec(I);
     }
   }
-  errs() << "erase " << *I << "\n";
+  outs() << "erase " << *I << "\n";
   I->eraseFromParent();
 }
 

@@ -30,12 +30,11 @@ class StripSpeculative : public llvm::ModulePass {
       m_functionsToRemove(std::vector<Function*>()),
       m_instructionsToRemove(std::vector<Instruction*>()) {}
 
-  virtual bool runOnModule(llvm::Module& M);
+    virtual bool runOnModule(llvm::Module& M);
     virtual bool runOnFunction(llvm::Function& F);
-    virtual bool runOnBasicBlock(llvm::BasicBlock& BB);
 
     virtual void getAnalysisUsage (llvm::AnalysisUsage& AU) const;
-    virtual llvm::StringRef getPassName () const {return "StripSpeculativeExecution";}
+    virtual llvm::StringRef getPassName () const { return "StripSpeculativeExecution"; }
   };
 } // namespace seahorn
 

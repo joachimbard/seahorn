@@ -33,7 +33,6 @@
 #include "seahorn/Passes.hh"
 #include "seahorn/PredicateAbstraction.hh"
 #include "seahorn/Support/SeaLog.hh"
-#include "seahorn/Transforms/Instrumentation/StripSpeculative.hh"
 #include "seahorn/Transforms/Scalar/LowerCstExpr.hh"
 #include "seahorn/Transforms/Scalar/LowerGvInitializers.hh"
 #include "seahorn/Transforms/Scalar/PromoteVerifierCalls.hh"
@@ -515,7 +514,7 @@ int main(int argc, char **argv) {
       pass_manager.add(new seahorn::HornSolver());
       if (Cex)
         pass_manager.add(new seahorn::HornCex());
-      if (!RepairedAsmOutputFilename.empty()) {
+      if (Speculative && !RepairedAsmOutputFilename.empty()) {
         pass_manager.add(seahorn::createStripShadowMemPass());
         pass_manager.add(seahorn::createStripSpeculativeExe());
         pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
