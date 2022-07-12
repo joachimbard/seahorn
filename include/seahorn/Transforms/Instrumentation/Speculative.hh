@@ -52,7 +52,7 @@ namespace seahorn
     unsigned getId (const Instruction *n);
 
     void insertFenceFunction(Module* M, Value* globalSpec);
-    BasicBlock* addSpeculationBB(std::string name, Value *cond, Value *spec, BasicBlock* bb);
+    BasicBlock* addSpeculationBB(std::string name, Value *spec, BasicBlock* bb);
     bool insertSpeculation(BranchInst& inst);
 
     BasicBlock* createErrorBlock (Function &F);

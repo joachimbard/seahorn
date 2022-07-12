@@ -71,16 +71,11 @@ void Speculative::insertFenceFunction(Module *M, Value *globalSpec) {
   m_Builder->ClearInsertionPoint();
 }
 
-BasicBlock *Speculative::addSpeculationBB(std::string name, Value *cond, Value *spec, BasicBlock *bb) {
+BasicBlock *Speculative::addSpeculationBB(std::string name, Value *spec, BasicBlock *bb) {
   LLVMContext &ctx = m_Builder->getContext();
   BasicBlock *specBB = BasicBlock::Create(ctx, name + "__bb", bb->getParent(), bb);
   m_Builder->SetInsertPoint(specBB);
-  Value *startSpec = m_Builder->CreateBinOp(Instruction::Xor, cond, spec, name + "__xor");
   Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
-//  Value *assumption = m_Builder->CreateOr(globalSpec, startSpec);
-  Function *assumeFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME, *specBB->getModule());
-  m_Builder->CreateCall(assumeFn, startSpec, "");
-//  m_Builder->CreateCall(assumeFn, assumption, "");
   globalSpec = m_Builder->CreateOr(globalSpec, spec);
   m_Builder->CreateAlignedStore(globalSpec, m_spec, 1);
   if (FencePlacement == AFTER_BRANCH) {
@@ -153,18 +148,11 @@ bool Speculative::insertSpeculation(BranchInst &BI) {
   m_Builder->SetInsertPoint(&BI);
   Value *negCond = m_Builder->CreateNot(cond, name + "__cond_neg");
 
-  // Determine speculation
-//  AllocaInst *specVar = m_Builder->CreateAlloca(m_BoolTy, 0, name);
-//  specVar->setAlignment(MaybeAlign(1));
-  Value *ndSpec = m_Builder->CreateCall(m_ndBoolFn, None, name + "__nd");
-//  m_Builder->CreateAlignedStore(ndSpec, specVar, 1);
-//  LoadInst *spec = m_Builder->CreateAlignedLoad(specVar, 1);
   Value *condNd = m_Builder->CreateCall(m_ndBoolFn, None, name + "__cond_nd");
-
   BI.setCondition(condNd);
 
-  BasicBlock *specThenBB = addSpeculationBB(name + "__then", cond, ndSpec, thenBB);
-  BasicBlock *specElseBB = addSpeculationBB(name + "__else", negCond, ndSpec, elseBB);
+  BasicBlock *specThenBB = addSpeculationBB(name + "__then", negCond, thenBB);
+  BasicBlock *specElseBB = addSpeculationBB(name + "__else", cond, elseBB);
   BI.setSuccessor(0, specThenBB);
   BI.setSuccessor(1, specElseBB);
   // Fix phi nodes in thenBB and elseBB
@@ -249,8 +237,7 @@ bool Speculative::runOnBasicBlock(BasicBlock &BB) {
     m_Builder->SetInsertPoint(&BB.front());
     Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
     auto I = BB.begin();
-    // skip globalSpec instruction which is created before
-    ++I;
+    ++I; // skip globalSpec instruction which is created before
     auto E = BB.end();
     for (; I != E; ++I) {
       //
