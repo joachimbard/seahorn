@@ -290,6 +290,27 @@ bool Speculative::runOnFunction(Function &F) {
     }
   }
 
+  // existing fences stop speculation
+  std::vector<Instruction*> manualFences;
+  for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+    Instruction *I = &*i;
+    if (CallInst *CI = dyn_cast<CallInst>(I)) {
+      Value *V = CI->getCalledValue();
+      if (InlineAsm *Asm = dyn_cast<InlineAsm>(V)) {
+        StringRef name = Asm->getAsmString();
+        if (name.equals("lfence")) {
+          manualFences.push_back(I);
+        }
+      }
+    }
+  }
+  for (Instruction *I : manualFences) {
+    m_Builder->SetInsertPoint(I);
+    Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
+    Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
+    m_Builder->CreateCall(assumeNotFn, globalSpec, "");
+  }
+
   // Collect all basic blocks
   std::vector<BasicBlock*> BBWorkList;
   bool changed = false;
