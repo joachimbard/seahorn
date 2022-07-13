@@ -6,9 +6,9 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Analysis/TargetFolder.h"
 
-#include "seahorn/HornSolver.hh"
-
 namespace seahorn {
+using namespace llvm;
+
 typedef IRBuilder<TargetFolder> BuilderTy;
 
 class StripSpeculative : public llvm::ModulePass {
@@ -35,7 +35,7 @@ class StripSpeculative : public llvm::ModulePass {
 
     virtual void getAnalysisUsage (llvm::AnalysisUsage& AU) const;
     virtual llvm::StringRef getPassName () const { return "StripSpeculativeExecution"; }
-  };
+};
 } // namespace seahorn
 
 #endif // __STRIPSPECULATIVE_HH__

@@ -9,6 +9,7 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/CFG.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
@@ -304,10 +305,10 @@ bool Speculative::runOnFunction(Function &F) {
       }
     }
   }
+  Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
   for (Instruction *I : manualFences) {
     m_Builder->SetInsertPoint(I);
     Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
-    Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
     m_Builder->CreateCall(assumeNotFn, globalSpec, "");
   }
 
@@ -398,7 +399,12 @@ bool Speculative::runOnModule(llvm::Module &M) {
   if (M.begin() == M.end())
     return false;
 
-//  M.print(outs(), nullptr);
+  m_originalModule = CloneModule(M);
+  outs() << "module before Speculative\n";
+  M.print(outs(), nullptr);
+  outs() << "copy of module before Speculative\n";
+  m_originalModule->print(outs(), nullptr);
+
   LLVMContext &ctx = M.getContext();
 
   m_BoolTy = Type::getInt1Ty(ctx);

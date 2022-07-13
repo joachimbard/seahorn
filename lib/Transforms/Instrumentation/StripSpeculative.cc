@@ -7,6 +7,7 @@
 #include "llvm/IR/Verifier.h"
 
 #include "seahorn/Transforms/Instrumentation/StripSpeculative.hh"
+#include "seahorn/HornSolver.hh"
 
 namespace seahorn {
 using namespace llvm;
@@ -58,8 +59,7 @@ bool StripSpeculative::runOnFunction(llvm::Function& F) {
       for (std::string fenceName : *m_inserted_fences) {
         if (name.equals(fenceName)) {
           StringRef constraints = "~{dirflag},~{fpsr},~{flags}";
-          InlineAsm *fenceAsm =
-              InlineAsm::get(m_asmTy, "lfence", constraints, true);
+          InlineAsm *fenceAsm = InlineAsm::get(m_asmTy, "lfence", constraints, true);
           m_builder->SetInsertPoint(I);
           // add lfence
           Value *fenceInst = m_builder->CreateCall(fenceAsm, None, fenceName);

@@ -356,7 +356,7 @@ int main(int argc, char **argv) {
   }
   if (Speculative) {
     pass_manager.add(seahorn::createSpeculativeExe());
-    outs() << "Specualtive execution added to pass manager\n";
+    outs() << "Speculative execution added to pass manager\n";
   }
 
   pass_manager.add(seahorn::createPromoteMallocPass());
@@ -515,9 +515,10 @@ int main(int argc, char **argv) {
       if (Cex)
         pass_manager.add(new seahorn::HornCex());
       if (Speculative && !RepairedAsmOutputFilename.empty()) {
-        pass_manager.add(seahorn::createStripShadowMemPass());
-        pass_manager.add(seahorn::createStripSpeculativeExe());
-        pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
+//        pass_manager.add(seahorn::createStripShadowMemPass());
+//        pass_manager.add(seahorn::createStripSpeculativeExe());
+//        pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
+        pass_manager.add(seahorn::createRepairSpectre(repairedAsmOutput->os()));
       }
     }
   }

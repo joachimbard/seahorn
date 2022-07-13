@@ -33,6 +33,7 @@ namespace seahorn
     Function * m_ndBoolFn;
     CallGraph * m_CG; // Call graph of the program
     StaticTaint m_taint;
+    std::unique_ptr<Module> m_originalModule;
 
     BasicBlock * m_ErrorBB;
     BuilderTy * m_Builder;
@@ -45,8 +46,8 @@ namespace seahorn
     GlobalVariable * m_SpecCount;
     GlobalVariable * m_spec;
 
-    unsigned m_numOfSpec;
-    unsigned m_numOfFences;
+    size_t m_numOfSpec;
+    size_t m_numOfFences;
 
     Value* createNdBoolean (IRBuilder<>& B);
     unsigned getId (const Instruction *n);
@@ -111,9 +112,10 @@ namespace seahorn
     virtual bool runOnBasicBlock(BasicBlock &B);
     
     void addAssertions(Function &F, std::vector<Instruction*> & WorkList);
+    std::unique_ptr<Module>& getOriginalModule() { return m_originalModule; }
 
     virtual void getAnalysisUsage (llvm::AnalysisUsage &AU) const;
-    virtual StringRef getPassName () const {return "SpeculativeExecution";}
+    virtual StringRef getPassName () const { return "SpeculativeExecution"; }
 
 //    std::map<std::string, CallInst&>& getFenceCallMap() { return m_fenceCallMap; }
   };

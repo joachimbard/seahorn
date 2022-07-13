@@ -15,4 +15,5 @@ add_llvm_library(SeaInstrumentation DISABLE_LLVM_LINK_LLVM_DYLIB
   GeneratePartialFnPass.cc
   Speculative.cc
   StripSpeculative.cc
+  RepairSpectre.cc
   )
