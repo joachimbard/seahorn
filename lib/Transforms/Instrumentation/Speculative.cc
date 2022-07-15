@@ -9,7 +9,6 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/CFG.h"
-#include "llvm/Transforms/Utils/Cloning.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
@@ -399,11 +398,7 @@ bool Speculative::runOnModule(llvm::Module &M) {
   if (M.begin() == M.end())
     return false;
 
-  m_originalModule = CloneModule(M);
-  outs() << "module before Speculative\n";
-  M.print(outs(), nullptr);
-  outs() << "copy of module before Speculative\n";
-  m_originalModule->print(outs(), nullptr);
+  errs() << "Speculative\n";
 
   LLVMContext &ctx = M.getContext();
 
@@ -465,9 +460,9 @@ bool Speculative::runOnModule(llvm::Module &M) {
   return change;
 }
 
-// Todo: The pass changes the code
 void Speculative::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-  AU.setPreservesAll();
+  // Todo: The pass changes the code
+//  AU.setPreservesAll();
   AU.addRequired<seahorn::SeaBuiltinsInfoWrapperPass>();
 }
 
@@ -621,7 +616,6 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 
   outs() << "Added A SPECULATION check...\n";
 }
-
 
 } // namespace seahorn
 

@@ -355,6 +355,10 @@ int main(int argc, char **argv) {
     pass_manager.add(seahorn::createStaticTaintPass(true));
   }
   if (Speculative) {
+    if (!RepairedAsmOutputFilename.empty()) {
+      // Print the module before speculation is added
+      pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
+    }
     pass_manager.add(seahorn::createSpeculativeExe());
     outs() << "Speculative execution added to pass manager\n";
   }
@@ -518,7 +522,7 @@ int main(int argc, char **argv) {
 //        pass_manager.add(seahorn::createStripShadowMemPass());
 //        pass_manager.add(seahorn::createStripSpeculativeExe());
 //        pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
-        pass_manager.add(seahorn::createRepairSpectre(repairedAsmOutput->os()));
+        pass_manager.add(seahorn::createRepairSpectre(RepairedAsmOutputFilename, repairedAsmOutput->os()));
       }
     }
   }

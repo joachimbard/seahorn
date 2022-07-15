@@ -110,9 +110,8 @@ namespace seahorn
     virtual bool runOnModule (llvm::Module &M);
     virtual bool runOnFunction (Function &F);
     virtual bool runOnBasicBlock(BasicBlock &B);
-    
+
     void addAssertions(Function &F, std::vector<Instruction*> & WorkList);
-    std::unique_ptr<Module>& getOriginalModule() { return m_originalModule; }
 
     virtual void getAnalysisUsage (llvm::AnalysisUsage &AU) const;
     virtual StringRef getPassName () const { return "SpeculativeExecution"; }

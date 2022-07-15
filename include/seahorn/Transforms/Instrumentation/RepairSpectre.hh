@@ -12,20 +12,24 @@ using namespace llvm;
 typedef IRBuilder<TargetFolder> BuilderTy;
 
 class RepairSpectre : public llvm::ModulePass {
-  // Todo: use better structure for lookup
+  StringRef m_originalModuleFilename;
   raw_ostream& m_repairOutput;
   BuilderTy* m_builder;
   FunctionType* m_asmTy;
+  // Todo: use better structure for lookup
   std::vector<std::string>* m_fences;
   size_t m_fenceNum;
 
 public:
   static char ID;
 
-  RepairSpectre(raw_ostream& repairOutput) :
+  RepairSpectre(StringRef originalModuleFilename, raw_ostream& repairOutput) :
     llvm::ModulePass(ID),
+    m_originalModuleFilename(originalModuleFilename),
     m_repairOutput(repairOutput),
-    m_fences(),
+//    Todo
+//    m_fences(nullptr),
+    m_fences(new std::vector<std::string>()),
     m_fenceNum(0) {}
 
   virtual bool runOnModule(llvm::Module& M);
