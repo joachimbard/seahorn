@@ -358,6 +358,7 @@ int main(int argc, char **argv) {
     if (!RepairedAsmOutputFilename.empty()) {
       // Print the module before speculation is added
       pass_manager.add(createPrintModulePass(repairedAsmOutput->os()));
+      // pass_manager.add(seahorn::createSpeculativeInfo());
     }
     pass_manager.add(seahorn::createSpeculativeExe());
     outs() << "Speculative execution added to pass manager\n";

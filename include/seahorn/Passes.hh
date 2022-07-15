@@ -110,6 +110,7 @@ llvm::Pass *createGeneratePartialFnPass();
 llvm::Pass *createCHAPass();
 llvm::ModulePass *createDebugVerifierPass(int instanceID, llvm::StringRef name);
 llvm::Pass *createUnifyAssumesPass();
+llvm::Pass *createSpeculativeInfo();
 llvm::Pass *createSpeculativeExe();
 llvm::Pass *createStripSpeculativeExe();
 llvm::Pass *createRepairSpectre(llvm::StringRef originalModuleFilename, llvm::raw_ostream &repairOutput);

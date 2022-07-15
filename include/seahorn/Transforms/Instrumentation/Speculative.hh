@@ -13,6 +13,7 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "seahorn/Analysis/SeaBuiltinsInfo.hh"
 #include "seahorn/Analysis/StaticTaint.hh"
+#include "seahorn/SpeculativeInfo.hh"
 
 #include <map>
 #include <vector>

@@ -464,6 +464,7 @@ void Speculative::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   // Todo: The pass changes the code
 //  AU.setPreservesAll();
   AU.addRequired<seahorn::SeaBuiltinsInfoWrapperPass>();
+//  AU.addRequired<SpeculativeInfo>();
 }
 
 BasicBlock *Speculative::createErrorBlock(Function &F) {

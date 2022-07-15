@@ -8,6 +8,7 @@
 #include "llvm/Support/SourceMgr.h"
 
 #include "seahorn/Transforms/Instrumentation/RepairSpectre.hh"
+#include "seahorn/SpeculativeInfo.hh"
 #include "seahorn/HornSolver.hh"
 
 namespace seahorn {
@@ -98,6 +99,7 @@ bool RepairSpectre::runOnFunction(Function& F) {
 void RepairSpectre::getAnalysisUsage(llvm::AnalysisUsage& AU) const {
   // Todo: check this
   AU.setPreservesAll();
+//  AU.addRequired<seahorn::SpeculativeInfo>();
   AU.addRequired<seahorn::HornSolver>();
 }
 
