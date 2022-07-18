@@ -400,6 +400,11 @@ bool Speculative::runOnModule(llvm::Module &M) {
 
   errs() << "Speculative\n";
 
+  if (m_repair) {
+    SpeculativeInfo& specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
+    specInfo.setOriginalModule(M);
+  }
+
   LLVMContext &ctx = M.getContext();
 
   m_BoolTy = Type::getInt1Ty(ctx);
@@ -464,7 +469,7 @@ void Speculative::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   // Todo: The pass changes the code
 //  AU.setPreservesAll();
   AU.addRequired<seahorn::SeaBuiltinsInfoWrapperPass>();
-//  AU.addRequired<SpeculativeInfo>();
+  if (m_repair) { AU.addRequired<SpeculativeInfoWrapperPass>(); }
 }
 
 BasicBlock *Speculative::createErrorBlock(Function &F) {
@@ -621,7 +626,7 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 } // namespace seahorn
 
 namespace seahorn {
-llvm::Pass *createSpeculativeExe() { return new Speculative(true); }
+llvm::Pass *createSpeculativeExe(bool repair) { return new Speculative(repair, true); }
 } // namespace seahorn
 
 static llvm::RegisterPass<seahorn::Speculative> X("speculative-exe",

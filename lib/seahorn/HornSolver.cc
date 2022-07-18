@@ -263,6 +263,8 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
     initDBModelFromFP(dbModel, db, fp);
     printInvars(M, dbModel);
     if (InsertFences) {
+      SpeculativeInfo &specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
+      specInfo.setFences(m_inserted_fences);
       outs() << "inserted fences: ";
       for (std::string fences : m_inserted_fences) { outs() << fences << ','; }
       outs() << '\n';
@@ -329,6 +331,7 @@ end_search:
 
 void HornSolver::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<HornifyModule>();
+  if (InsertFences) { AU.addRequired<SpeculativeInfoWrapperPass>(); }
   AU.setPreservesAll();
 }
 
@@ -579,19 +582,23 @@ void HornSolver::estimateSizeInvars(Module &M) {
 }
 
 void HornSolver::printInvars(Module &M, HornDbModel &model) {
+  errs() << "HornSolver::printInvars\n";
+  HornifyModule &hm = getAnalysis<HornifyModule>();
   for (auto &F : M)
-    printInvars(F, model);
+    printInvars(F, model, hm);
 }
 
-void HornSolver::printInvars(Function &F, HornDbModel &model) {
+void HornSolver::printInvars(Function &F, HornDbModel &model, HornifyModule &hm) {
   if (F.isDeclaration())
     return;
 
-  HornifyModule &hm = getAnalysis<HornifyModule>();
   outs() << "Function: " << F.getName() << "\n";
 
   // -- not used for now
   Expr summary = hm.summaryPredicate(F);
+//  if (summary) {
+//    outs() << "summary: " << *summary << '\n';
+//  }
 
   ZFixedPoint<EZ3> fp = *m_fp;
 

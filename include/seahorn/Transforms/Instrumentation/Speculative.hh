@@ -29,6 +29,7 @@ namespace seahorn
   {
 
     bool m_dump;
+    bool m_repair;
     Function * m_assumeFn;
     Function * m_assertFn;
     Function * m_ndBoolFn;
@@ -93,20 +94,21 @@ namespace seahorn
 
     static char ID;
 
-    Speculative (bool dump = false) :
+    Speculative (bool repair = false, bool dump = false) :
         llvm::ModulePass (ID),
-		m_dump(dump),
-		m_assumeFn(nullptr),
-		m_assertFn(nullptr),
-		m_ndBoolFn(nullptr),
-                m_ErrorBB(nullptr),
-                m_CG (nullptr),
-//                m_bb2spec(),
-//                m_fenceCallMap(std::map<std::string, CallInst&>()),
-                m_nd(nullptr),
-                m_BoolTy(nullptr),
-                m_numOfSpec(0),
-                m_numOfFences(0) { }
+	m_dump(dump),
+        m_repair(repair),
+	m_assumeFn(nullptr),
+	m_assertFn(nullptr),
+	m_ndBoolFn(nullptr),
+        m_ErrorBB(nullptr),
+        m_CG (nullptr),
+//        m_bb2spec(),
+//        m_fenceCallMap(std::map<std::string, CallInst&>()),
+        m_nd(nullptr),
+        m_BoolTy(nullptr),
+        m_numOfSpec(0),
+        m_numOfFences(0) { }
 
     virtual bool runOnModule (llvm::Module &M);
     virtual bool runOnFunction (Function &F);

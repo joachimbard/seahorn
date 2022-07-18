@@ -6,6 +6,8 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Analysis/TargetFolder.h"
 
+#include "seahorn/SpeculativeInfo.hh"
+
 namespace seahorn {
 using namespace llvm;
 
@@ -33,7 +35,7 @@ public:
     m_fenceNum(0) {}
 
   virtual bool runOnModule(llvm::Module& M);
-  virtual bool runOnFunction(llvm::Function& F);
+  virtual bool runOnFunction(llvm::Function& F, SpeculativeInfo& specInfo);
 
   virtual void getAnalysisUsage (llvm::AnalysisUsage& AU) const;
   virtual llvm::StringRef getPassName () const { return "RepairSpectre"; }

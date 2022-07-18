@@ -27,8 +27,8 @@ class HornSolver : public llvm::ModulePass {
   std::string getFenceOpt();
   void estimateSizeInvars(Module &M);
 
-  void printInvars(Function &F, HornDbModel &model);
   void printInvars(Module &M, HornDbModel &model);
+  void printInvars(Function &F, HornDbModel &model, HornifyModule &hm);
 
 public:
   static char ID;

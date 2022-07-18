@@ -9,4 +9,5 @@ void initializeGeneratePartialFnPassPass(PassRegistry &);
 void initializeLoopPeelerPassPass(PassRegistry &);
 void initializeAddBranchSentinelPassPass(PassRegistry &);
 void initializeEvalBranchSentinelPassPass(PassRegistry &);
+void initializeSpeculativeInfoWrapperPassPass(PassRegistry &);
 }
