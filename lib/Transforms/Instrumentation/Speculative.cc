@@ -24,8 +24,8 @@ static llvm::cl::opt<seahorn::FencePlaceOpt> FencePlacement(
     "fence-placement",
     llvm::cl::desc("Location of the possible fence placements"),
     llvm::cl::values(
-        clEnumValN(seahorn::FencePlaceOpt::BEFORE_MEMORY, "memory", "Insert fences directly before memory operations"),
-        clEnumValN(seahorn::FencePlaceOpt::AFTER_BRANCH, "branch", "Insert fences directly after branches"),
+        clEnumValN(seahorn::FencePlaceOpt::BEFORE_MEMORY, "before-memory", "Insert fences directly before memory operations"),
+        clEnumValN(seahorn::FencePlaceOpt::AFTER_BRANCH, "after-branch", "Insert fences directly after branches"),
         clEnumValN(seahorn::FencePlaceOpt::EVERY_INST, "every-inst", "Insert fences before every instruction")
     ),
     llvm::cl::init(seahorn::FencePlaceOpt::BEFORE_MEMORY));

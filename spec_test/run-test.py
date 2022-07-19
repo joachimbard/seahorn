@@ -6,15 +6,18 @@ import glob
 step = "large"
 incremental = "true"
 choice = "opt"
+repair = True
 
 timecmd = "/usr/bin/time"
-timeout = 60 # minutes
+timeout = 6 # minutes
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
-testdirs = ["Kocher"]
-#testdirs = ["Kocher", "openssl"]
-iterations = 2
+testdirs = ["openssl"]
+#testdirs = ["Kocher", "openssl", "hacl-star"]
+iterations = 1
+test_placements = ["after-branch", "before-memory"]
+#placements = ["every-inst", "after-branch", "before-memory"]
 
 def run_single_test(llfile, placement, choice):
     basename = os.path.basename(llfile[:-len(".ll")])
@@ -22,10 +25,12 @@ def run_single_test(llfile, placement, choice):
 
     print("run on", llfile, "with fences at", placement, "and", choice)
 
+    repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "runtime:%e",
            "../build/run/bin/sea", "horn", "--solve",
            "-o={}.smt2".format(outfile),
            "--oll={}.ll".format(outfile),
+           repairfile,
            "--step={}".format(step), "--horn-answer", "--horn-tail-simplifier-pve=false",
            "--horn-subsumption=false", "--horn-inline-all", "--speculative-exe",
            "--insert-fences", "--fence-placement={}".format(placement),
@@ -74,25 +79,26 @@ def run_single_test(llfile, placement, choice):
 if sys.argv[1] == "--all":
     texfile = open("{}/{}".format(tmpdir, texfilename), "w")
     print("\\begin{tabular}{l|cc|cc|cc}\n\\toprule", file=texfile)
-    print("\\textbf{Benchmark} & \multicolumn{2}{c|}{\\textbf{every-inst}} & \multicolumn{2}{c|}{\\textbf{after-branch}} & \multicolumn{2}{c}{\\textbf{before-memory}} \\\\", file=texfile)
-    print("& fences & time & fences & time & fences & time\\\\", file=texfile)
+    print("\\textbf{Benchmark}", end="", file=texfile)
+    for placement in test_placements:
+        print("", "\multicolumn{2}{c|}{\\textbf{" + placement + "}}", sep=delim,
+                end="", file=texfile)
+    print("\\\\", file=texfile)
+    for _ in test_placements:
+        print("", "fences", "time", sep=delim, end="", file=texfile)
+    print("\\\\", file=texfile)
     for d in testdirs:
         print("\\midrule", file=texfile)
         for test in sorted(glob.glob(d + "/*.ll")):
             for i in range(iterations):
-                (num_fences_every_inst, t_every_inst) = run_single_test(test, "every-inst", choice)
-                (num_fences_branch, t_branch) = run_single_test(test, "branch", choice)
-                (num_fences_mem, t_mem) = run_single_test(test, "memory", choice)
-                if num_fences_every_inst < 0:
-                    num_fences_every_inst = "---"
-                if num_fences_branch < 0:
-                    num_fences_branch = "---"
-                if num_fences_mem < 0:
-                    num_fences_mem = "---"
-                print(os.path.basename(test).replace("_", "\\_"),
-                        num_fences_every_inst, t_every_inst,
-                        num_fences_branch, t_branch,  num_fences_mem, t_mem,
-                        sep=delim, end="\\\\\n", file=texfile)
+                print(os.path.basename(test).replace("_", "\\_"), end="", file=texfile)
+                for placement in test_placements:
+                    (num_fences, runtime) = run_single_test(test, placement, choice)
+                    if num_fences < 0:
+                        num_fences = "---"
+                    print("", num_fences, runtime, sep=delim,
+                            end="", file=texfile)
+                print("\\\\", file=texfile)
     print("\\bottomrule\n\\end{tabular}", file=texfile)
 else:
     if len(sys.argv) < 4:
