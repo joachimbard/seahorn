@@ -4,13 +4,22 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/CommandLine.h"
 
 #include <vector>
 
 namespace seahorn {
+
+enum class FencePlaceOpt {
+  BEFORE_MEMORY,
+  AFTER_BRANCH,
+  EVERY_INST
+};
+
 using namespace llvm;
 
 class SpeculativeInfo {
+  FencePlaceOpt m_fencePlacement;
   std::unique_ptr<Module> m_originalModule;
   std::vector<std::string> m_fences;
 
@@ -19,9 +28,12 @@ public:
 
   void releaseMemory();
 
+  FencePlaceOpt getFencePlacement() { return m_fencePlacement; }
+  void setFencePlacement(FencePlaceOpt fencePlacement) { m_fencePlacement = fencePlacement; }
   Module& getOriginalModule() { return *m_originalModule; }
   void setOriginalModule(Module& M);
   bool isFenceID(std::string id) { return std::binary_search(m_fences.begin(), m_fences.end(), id); }
+  size_t getFenceCount() { return m_fences.size(); }
   void setFences(std::vector<std::string>& fences);
   void printFences(raw_ostream& OS);
 };

@@ -20,7 +20,10 @@ class RepairSpectre : public llvm::ModulePass {
   FunctionType* m_asmTy;
   // Todo: use better structure for lookup
   std::vector<std::string>* m_fences;
-  size_t m_fenceNum;
+  size_t m_fenceId;
+  size_t m_insertedFencesNum;
+
+  BasicBlock* addFenceBB(BasicBlock* BB);
 
 public:
   static char ID;
@@ -31,11 +34,11 @@ public:
     m_repairOutput(repairOutput),
 //    Todo
 //    m_fences(nullptr),
-    m_fences(new std::vector<std::string>()),
-    m_fenceNum(0) {}
+    m_fences(new std::vector<std::string>()), m_fenceId(0), m_insertedFencesNum(0) {}
 
   virtual bool runOnModule(llvm::Module& M);
   virtual bool runOnFunction(llvm::Function& F, SpeculativeInfo& specInfo);
+  virtual bool runOnBasicBlock(llvm::BasicBlock& BB, SpeculativeInfo& specInfo);
 
   virtual void getAnalysisUsage (llvm::AnalysisUsage& AU) const;
   virtual llvm::StringRef getPassName () const { return "RepairSpectre"; }

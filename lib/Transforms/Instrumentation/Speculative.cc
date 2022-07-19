@@ -20,21 +20,15 @@ static llvm::cl::opt<bool> HasErrorFunc(
     llvm::cl::desc("Available verifier.error function to denote error."),
     llvm::cl::init(true));
 
-enum FencePlaceOpt {
-  BEFORE_MEMORY,
-  AFTER_BRANCH,
-  EVERY_INST
-};
-
-static llvm::cl::opt<FencePlaceOpt> FencePlacement(
+static llvm::cl::opt<seahorn::FencePlaceOpt> FencePlacement(
     "fence-placement",
     llvm::cl::desc("Location of the possible fence placements"),
     llvm::cl::values(
-        clEnumValN(BEFORE_MEMORY, "memory", "Insert fences directly before memory operations"),
-        clEnumValN(AFTER_BRANCH, "branch", "Insert fences directly after branches"),
-        clEnumValN(EVERY_INST, "every-inst", "Insert fences before every instruction")
-        ),
-    llvm::cl::init(BEFORE_MEMORY));
+        clEnumValN(seahorn::FencePlaceOpt::BEFORE_MEMORY, "memory", "Insert fences directly before memory operations"),
+        clEnumValN(seahorn::FencePlaceOpt::AFTER_BRANCH, "branch", "Insert fences directly after branches"),
+        clEnumValN(seahorn::FencePlaceOpt::EVERY_INST, "every-inst", "Insert fences before every instruction")
+    ),
+    llvm::cl::init(seahorn::FencePlaceOpt::BEFORE_MEMORY));
 
 namespace seahorn {
 using namespace llvm;
@@ -78,7 +72,7 @@ BasicBlock *Speculative::addSpeculationBB(std::string name, Value *spec, BasicBl
   Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
   globalSpec = m_Builder->CreateOr(globalSpec, spec);
   m_Builder->CreateAlignedStore(globalSpec, m_spec, 1);
-  if (FencePlacement == AFTER_BRANCH) {
+  if (FencePlacement == FencePlaceOpt::AFTER_BRANCH) {
     insertFenceFunction(specBB->getModule(), globalSpec);
     m_Builder->SetInsertPoint(specBB);
   }
@@ -231,7 +225,7 @@ bool Speculative::runOnBasicBlock(BasicBlock &BB) {
   bool changed = false;
   BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
 
-  if (FencePlacement == EVERY_INST) {
+  if (FencePlacement == FencePlaceOpt::EVERY_INST) {
     changed = true;
     Module *M = BB.getModule();
     m_Builder->SetInsertPoint(&BB.front());
@@ -280,7 +274,7 @@ bool Speculative::runOnFunction(Function &F) {
   for (Instruction *I : WorkList)
 	  splitSelectInst(F, cast<SelectInst>(I));
 
-  // Collect all instructions.
+  // Collect all memory instructions.
   // This work list does not include the added speculation instructions
   WorkList.clear();
   for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
@@ -298,6 +292,7 @@ bool Speculative::runOnFunction(Function &F) {
       Value *V = CI->getCalledValue();
       if (InlineAsm *Asm = dyn_cast<InlineAsm>(V)) {
         StringRef name = Asm->getAsmString();
+        // Todo: What if lfence is part of larger asm
         if (name.equals("lfence")) {
           manualFences.push_back(I);
         }
@@ -402,6 +397,7 @@ bool Speculative::runOnModule(llvm::Module &M) {
 
   if (m_repair) {
     SpeculativeInfo& specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
+    specInfo.setFencePlacement(FencePlacement);
     specInfo.setOriginalModule(M);
   }
 
@@ -447,14 +443,14 @@ bool Speculative::runOnModule(llvm::Module &M) {
 //  m_taint.runOnModule(M);
 //  outs() << "Done - computing taint...\n";
 
-  bool change = false;
+  bool changed = false;
 //  llvm::Module::FunctionListType Funcs;
   std::vector<Function*> Funcs;
   for (Function &F : M) {
     Funcs.push_back(&F);
   }
   for (Function *F : Funcs) {
-    change |= runOnFunction(*F);
+    changed |= runOnFunction(*F);
   }
 
   outs() << "-- Inserted " << m_numOfSpec << " speculations.\n";
@@ -462,7 +458,7 @@ bool Speculative::runOnModule(llvm::Module &M) {
     M.print(outs(), nullptr);
   }
 
-  return change;
+  return changed;
 }
 
 void Speculative::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
@@ -594,7 +590,7 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 //  Value *specCheck = B.CreateICmpEQ(specOr, ConstantInt::get(m_BoolTy, 0), "spec_check");
 
   Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
-  if (FencePlacement == BEFORE_MEMORY) {
+  if (FencePlacement == FencePlaceOpt::BEFORE_MEMORY) {
     insertFenceFunction(inst.getModule(), globalSpec);
   }
 

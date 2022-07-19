@@ -35,7 +35,6 @@ namespace seahorn
     Function * m_ndBoolFn;
     CallGraph * m_CG; // Call graph of the program
     StaticTaint m_taint;
-    std::unique_ptr<Module> m_originalModule;
 
     BasicBlock * m_ErrorBB;
     BuilderTy * m_Builder;

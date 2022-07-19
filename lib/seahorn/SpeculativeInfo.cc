@@ -33,9 +33,9 @@ void SpeculativeInfo::printFences(raw_ostream &OS) {
 }
 
 void SpeculativeInfo::releaseMemory() {
-  // Todo
-  // m_originalModule.reset(nullptr);
+  errs() << "SpeculativeInfo::releaseMemory\n";
   m_originalModule->dropAllReferences();
+  m_originalModule.reset(nullptr);
   m_fences.clear();
 }
 
