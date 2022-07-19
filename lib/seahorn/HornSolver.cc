@@ -582,7 +582,6 @@ void HornSolver::estimateSizeInvars(Module &M) {
 }
 
 void HornSolver::printInvars(Module &M, HornDbModel &model) {
-  errs() << "HornSolver::printInvars\n";
   HornifyModule &hm = getAnalysis<HornifyModule>();
   for (auto &F : M)
     printInvars(F, model, hm);
@@ -614,7 +613,7 @@ void HornSolver::printInvars(Function &F, HornDbModel &model, HornifyModule &hm)
     Expr invars = model.getDef(bind::fapp(bbPred, live));
 
     if (isOpX<AND>(invars)) {
-      outs() << "\n\t";
+      outs() << "\n";
       for (size_t i = 0; i < invars->arity(); ++i)
         outs() << "\t" << *invars->arg(i) << "\n";
     } else {

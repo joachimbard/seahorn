@@ -17,7 +17,6 @@ using namespace llvm;
 char RepairSpectre::ID = 0;
 
 bool RepairSpectre::runOnModule(Module& M) {
-  errs() << "RepairSpectre\n";
   SpeculativeInfo& specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
   Module& repairModule = specInfo.getOriginalModule();
 //  llvm::SMDiagnostic err;

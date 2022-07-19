@@ -15,14 +15,11 @@ char SpeculativeInfo::ID = 0;
 
 void SpeculativeInfo::setOriginalModule(Module &M) {
   m_originalModule = CloneModule(M);
-  errs() << "SpeculativeInfo::setOriginalModule\n";
 }
 
 void SpeculativeInfo::setFences(std::vector<std::string>& fences) {
   std::sort(fences.begin(), fences.end());
   m_fences = fences;
-  errs() << "SpeculativeInfo::setFences\n";
-  printFences(errs());
 }
 
 void SpeculativeInfo::printFences(raw_ostream &OS) {

@@ -394,8 +394,6 @@ bool Speculative::runOnModule(llvm::Module &M) {
   if (M.begin() == M.end())
     return false;
 
-  errs() << "Speculative\n";
-
   if (m_repair) {
     SpeculativeInfo& specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
     specInfo.setFencePlacement(FencePlacement);
