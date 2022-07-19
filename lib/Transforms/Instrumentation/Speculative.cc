@@ -265,14 +265,15 @@ bool Speculative::runOnFunction(Function &F) {
 
   // First collect selection instructions
   std::vector<Instruction*> WorkList;
-  for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
-    if (isa<SelectInst>(&*i)) WorkList.push_back(&*i);
-  }
-
-  // Select Instructions have a condition by which a value is picked.
-  // Break them down to different basic blocks.
-  for (Instruction *I : WorkList)
-	  splitSelectInst(F, cast<SelectInst>(I));
+  // Todo: Don't change select instructions for now
+//  for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+//    if (isa<SelectInst>(&*i)) WorkList.push_back(&*i);
+//  }
+//
+//  // Select Instructions have a condition by which a value is picked.
+//  // Break them down to different basic blocks.
+//  for (Instruction *I : WorkList)
+//	  splitSelectInst(F, cast<SelectInst>(I));
 
   // Collect all memory instructions.
   // This work list does not include the added speculation instructions
