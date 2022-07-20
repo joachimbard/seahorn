@@ -265,7 +265,6 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
     if (InsertFences) {
       SpeculativeInfo &specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
       specInfo.setFences(m_inserted_fences);
-      specInfo.printFences(errs());
     }
   } else if (m_result) {
     if (PrintAnswer) {
@@ -292,7 +291,7 @@ end_search:
         char* nameEnd = &*name.end();
         SpeculativeInfo::FenceType fenceId = std::strtoll(&name[6], &nameEnd, 10);
         m_inserted_fences.push_back(fenceId);
-        outs() << "insert fence at " << name << " (id is " << fenceId << ")\n";
+        outs() << "insert fence id " << fenceId << "\n";
         Function *fence = M.getFunction(name);
         if (fence) {
           fence->print(outs());

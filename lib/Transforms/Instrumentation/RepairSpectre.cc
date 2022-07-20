@@ -44,7 +44,7 @@ bool RepairSpectre::runOnModule(Module& M) {
   m_asmTy = FunctionType::get(B.getVoidTy(), false);
 
   bool changed = false;
-  outs() << "inserting the following fences in RepairSpectre: ";
+  outs() << "inserting the following ";
   specInfo.printFences(outs());
 
   for (Function& F : repairModule) {
@@ -69,7 +69,6 @@ bool RepairSpectre::runOnModule(Module& M) {
 
 bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
   if (F.isDeclaration()) { return false; }
-  errs() << "runOnFunction called on " << F.getName() << "\n";
   bool changed = false;
   switch (specInfo.getFencePlacement()) {
   case FencePlaceOpt::BEFORE_MEMORY: {
@@ -77,7 +76,6 @@ bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
       Instruction *I = &*i;
       if (isa<LoadInst>(I) || isa<StoreInst>(I)) {
-        outs() << "trying fence id " << m_fenceId << "\n";
         if (specInfo.isFenceID(m_fenceId)) {
           Worklist.push_back(I);
           outs() << "inserting fence with id " << m_fenceId << "\n";
@@ -115,7 +113,6 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
   bool changed = false;
   BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
   if (!BI || !BI->isConditional()) { return changed; }
-  outs() << "trying fence id " << m_fenceId << "\n";
   if (specInfo.isFenceID(m_fenceId)) {
     outs() << "inserting fence with id " << m_fenceId << "\n";
     changed = true;
@@ -127,7 +124,6 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
     thenBB->replacePhiUsesWith(currBB, newThenBB);
   }
   ++m_fenceId;
-  outs() << "trying fence id " << m_fenceId << "\n";
   if (specInfo.isFenceID(m_fenceId)) {
     outs() << "inserting fence with id " << m_fenceId << "\n";
     changed = true;
