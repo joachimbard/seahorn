@@ -19,9 +19,13 @@ enum class FencePlaceOpt {
 using namespace llvm;
 
 class SpeculativeInfo {
+public:
+  using FenceType = size_t;
+
+private:
   FencePlaceOpt m_fencePlacement;
   std::unique_ptr<Module> m_originalModule;
-  std::vector<std::string> m_fences;
+  std::vector<FenceType> m_fences;
 
 public:
   static char ID;
@@ -32,9 +36,9 @@ public:
   void setFencePlacement(FencePlaceOpt fencePlacement) { m_fencePlacement = fencePlacement; }
   Module& getOriginalModule() { return *m_originalModule; }
   void setOriginalModule(Module& M);
-  bool isFenceID(std::string id) { return std::binary_search(m_fences.begin(), m_fences.end(), id); }
+  bool isFenceID(FenceType id) { return std::binary_search(m_fences.begin(), m_fences.end(), id); }
   size_t getFenceCount() { return m_fences.size(); }
-  void setFences(std::vector<std::string>& fences);
+  void setFences(std::vector<FenceType>& fences);
   void printFences(raw_ostream& OS);
 };
 

@@ -9,6 +9,7 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/CFG.h"
+#include "llvm/IR/Verifier.h"
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/CommandLine.h"
@@ -456,6 +457,10 @@ bool Speculative::runOnModule(llvm::Module &M) {
   if (m_dump) {
     M.print(outs(), nullptr);
   }
+  bool broken = verifyModule(M, &errs());
+  if (broken) {
+    errs() << "module after speculative execution is broken\n";
+  }
 
   return changed;
 }
@@ -621,7 +626,7 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 } // namespace seahorn
 
 namespace seahorn {
-llvm::Pass *createSpeculativeExe(bool repair) { return new Speculative(repair, true); }
+llvm::Pass *createSpeculativeExe(bool repair) { return new Speculative(repair); }
 } // namespace seahorn
 
 static llvm::RegisterPass<seahorn::Speculative> X("speculative-exe",

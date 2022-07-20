@@ -8,6 +8,7 @@
 #include "llvm/Pass.h"
 
 #include "seahorn/Expr/Smt/EZ3.hh"
+#include "seahorn/SpeculativeInfo.hh"
 
 namespace seahorn {
 using namespace llvm;
@@ -16,7 +17,7 @@ class HornSolver : public llvm::ModulePass {
   boost::tribool m_result;
   std::unique_ptr<EZ3> m_local_ctx;
   std::unique_ptr<ZFixedPoint<EZ3>> m_fp;
-  std::vector<std::string> m_inserted_fences;
+  std::vector<SpeculativeInfo::FenceType> m_inserted_fences;
 //  std::map<std::string, Instruction&> m_fence2call;
 
   bool runOnModule(Module &M, HornifyModule &hm, bool reuseCover);
@@ -42,7 +43,6 @@ public:
   ZFixedPoint<EZ3> &getZFixedPoint() { return *m_fp; }
 
   boost::tribool getResult() { return m_result; }
-  std::vector<std::string> *getInsertedFences() { return &m_inserted_fences; }
 
   void releaseMemory() {
     m_fp.reset(nullptr);

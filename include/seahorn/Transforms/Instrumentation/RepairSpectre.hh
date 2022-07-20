@@ -18,9 +18,7 @@ class RepairSpectre : public llvm::ModulePass {
   raw_ostream& m_repairOutput;
   BuilderTy* m_builder;
   FunctionType* m_asmTy;
-  // Todo: use better structure for lookup
-  std::vector<std::string>* m_fences;
-  size_t m_fenceId;
+  SpeculativeInfo::FenceType m_fenceId;
   size_t m_insertedFencesNum;
 
   BasicBlock* addFenceBB(BasicBlock* BB);
@@ -34,7 +32,7 @@ public:
     m_repairOutput(repairOutput),
 //    Todo
 //    m_fences(nullptr),
-    m_fences(new std::vector<std::string>()), m_fenceId(0), m_insertedFencesNum(0) {}
+    m_fenceId(0), m_insertedFencesNum(0) {}
 
   virtual bool runOnModule(llvm::Module& M);
   virtual bool runOnFunction(llvm::Function& F, SpeculativeInfo& specInfo);

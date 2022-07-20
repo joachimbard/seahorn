@@ -48,7 +48,7 @@ namespace seahorn
     GlobalVariable * m_spec;
 
     size_t m_numOfSpec;
-    size_t m_numOfFences;
+    SpeculativeInfo::FenceType m_numOfFences;
 
     Value* createNdBoolean (IRBuilder<>& B);
     unsigned getId (const Instruction *n);

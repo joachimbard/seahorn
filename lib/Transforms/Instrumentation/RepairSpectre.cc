@@ -61,7 +61,9 @@ bool RepairSpectre::runOnModule(Module& M) {
   }
 
   bool broken = verifyModule(repairModule, &errs());
-  errs() << "repaired module is " << (broken ? "broken\n" : "OK\n");
+  if (broken) {
+    errs() << "repaired module is broken\n";
+  }
   return changed;
 }
 
@@ -75,12 +77,12 @@ bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
       Instruction *I = &*i;
       if (isa<LoadInst>(I) || isa<StoreInst>(I)) {
-        StringRef possibleFenceName = "fence_" + std::to_string(m_fenceId++);
-        outs() << "trying " << possibleFenceName << "\n";
-        if (specInfo.isFenceID(possibleFenceName)) {
+        outs() << "trying fence id " << m_fenceId << "\n";
+        if (specInfo.isFenceID(m_fenceId)) {
           Worklist.push_back(I);
-          outs() << "inserting " << possibleFenceName << "\n";
+          outs() << "inserting fence with id " << m_fenceId << "\n";
         }
+        ++m_fenceId;
       }
     }
     for (Instruction *I : Worklist) {
@@ -89,9 +91,7 @@ bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
       InlineAsm *fenceAsm =
           InlineAsm::get(m_asmTy, "lfence", constraints, true);
       m_builder->SetInsertPoint(I);
-      // add lfence
-      Value *fenceInst = m_builder->CreateCall(fenceAsm, None);
-      outs() << "inserted " << *fenceInst << "\n";
+      m_builder->CreateCall(fenceAsm, None);
       ++m_insertedFencesNum;
     }
     return changed;
@@ -115,8 +115,9 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
   bool changed = false;
   BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
   if (!BI || !BI->isConditional()) { return changed; }
-  std::string possibleFenceName = "fence_" + std::to_string(m_fenceId++);
-  if (specInfo.isFenceID(possibleFenceName)) {
+  outs() << "trying fence id " << m_fenceId << "\n";
+  if (specInfo.isFenceID(m_fenceId)) {
+    outs() << "inserting fence with id " << m_fenceId << "\n";
     changed = true;
     BasicBlock* thenBB = BI->getSuccessor(0);
     BasicBlock* newThenBB = addFenceBB(thenBB);
@@ -125,8 +126,10 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
     BasicBlock *currBB = BI->getParent();
     thenBB->replacePhiUsesWith(currBB, newThenBB);
   }
-  possibleFenceName = "fence_" + std::to_string(m_fenceId++);
-  if (specInfo.isFenceID(possibleFenceName)) {
+  ++m_fenceId;
+  outs() << "trying fence id " << m_fenceId << "\n";
+  if (specInfo.isFenceID(m_fenceId)) {
+    outs() << "inserting fence with id " << m_fenceId << "\n";
     changed = true;
     BasicBlock* elseBB = BI->getSuccessor(1);
     BasicBlock* newElseBB = addFenceBB(elseBB);
@@ -135,6 +138,7 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
     BasicBlock *currBB = BI->getParent();
     elseBB->replacePhiUsesWith(currBB, newElseBB);
   }
+  ++m_fenceId;
   return changed;
 }
 
@@ -145,8 +149,7 @@ BasicBlock* RepairSpectre::addFenceBB(BasicBlock *BB) {
   StringRef constraints = "~{dirflag},~{fpsr},~{flags}";
   InlineAsm *fenceAsm =
       InlineAsm::get(m_asmTy, "lfence", constraints, true);
-  Value *fenceInst = m_builder->CreateCall(fenceAsm, None);
-  outs() << "inserted " << *fenceInst << "\n";
+  m_builder->CreateCall(fenceAsm, None);
   ++m_insertedFencesNum;
   m_builder->CreateBr(BB);
   return fenceBB;

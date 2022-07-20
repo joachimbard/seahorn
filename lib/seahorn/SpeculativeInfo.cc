@@ -17,13 +17,14 @@ void SpeculativeInfo::setOriginalModule(Module &M) {
   m_originalModule = CloneModule(M);
 }
 
-void SpeculativeInfo::setFences(std::vector<std::string>& fences) {
+void SpeculativeInfo::setFences(std::vector<FenceType>& fences) {
   std::sort(fences.begin(), fences.end());
   m_fences = fences;
 }
 
 void SpeculativeInfo::printFences(raw_ostream &OS) {
-  for (auto& fence : m_fences) {
+  OS << "fence ids: ";
+  for (FenceType fence : m_fences) {
     OS << fence << ",";
   }
   OS << "\n";
