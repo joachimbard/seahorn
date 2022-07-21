@@ -129,13 +129,10 @@ bool Speculative::insertSpeculation(BranchInst &BI) {
   BasicBlock *thenBB = BI.getSuccessor(0);
   BasicBlock *elseBB = BI.getSuccessor(1);
 
-    outs() << "Here1...\n";
   // If any of the branches is an Error Block (meaning, an assertion)
   // do not add speculation
   if (isErrorBB(thenBB) || isErrorBB(elseBB))
 	  return false;
-
-  outs() << "Here...\n";
 
   std::string name = "spec" + std::to_string(m_numOfSpec++);
   Value *cond = BI.getCondition();
@@ -443,6 +440,10 @@ bool Speculative::runOnModule(llvm::Module &M) {
 //  m_taint.runOnModule(M);
 //  outs() << "Done - computing taint...\n";
 
+  if (m_dump) {
+    outs() << "Module before speculation is added:\n";
+    M.print(outs(), nullptr);
+  }
   bool changed = false;
 //  llvm::Module::FunctionListType Funcs;
   std::vector<Function*> Funcs;
@@ -455,6 +456,7 @@ bool Speculative::runOnModule(llvm::Module &M) {
 
   outs() << "-- Inserted " << m_numOfSpec << " speculations.\n";
   if (m_dump) {
+    outs() << "Module after speculation was added:\n";
     M.print(outs(), nullptr);
   }
   bool broken = verifyModule(M, &errs());
@@ -626,7 +628,7 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 } // namespace seahorn
 
 namespace seahorn {
-llvm::Pass *createSpeculativeExe(bool repair) { return new Speculative(repair); }
+llvm::Pass *createSpeculativeExe(bool repair) { return new Speculative(repair, true); }
 } // namespace seahorn
 
 static llvm::RegisterPass<seahorn::Speculative> X("speculative-exe",
