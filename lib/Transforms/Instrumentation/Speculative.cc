@@ -510,10 +510,22 @@ BasicBlock *Speculative::getErrorBB(Instruction *I) {
   m_ErrorBB = BasicBlock::Create(ctx, "spec_error_bb", Fn);
   BasicBlock *retBB = BasicBlock::Create(ctx, "ret_bb", Fn);
   m_Builder->SetInsertPoint(m_ErrorBB);
+  Type *retType = Fn->getReturnType();
+  Instruction *dummyRetVal = nullptr;
+  if (!retType->isVoidTy()) {
+    // create dummy return value
+    Instruction *retAlloc = m_Builder->CreateAlloca(retType);
+    dummyRetVal = m_Builder->CreateLoad(retAlloc, "dummy_ret_val");
+  }
   m_Builder->CreateBr(retBB);
   m_Builder->SetInsertPoint(retBB);
   PHINode *phi = m_Builder->CreatePHI(m_Builder->getInt1Ty(), 2);
   phi->addIncoming(m_Builder->getTrue(), m_ErrorBB);
+  PHINode *retPhi = nullptr;
+  if (dummyRetVal) {
+    retPhi = m_Builder->CreatePHI(retType, 2);
+    retPhi->addIncoming(dummyRetVal, m_ErrorBB);
+  }
   Function *assumeFn = SBI->mkSeaBuiltinFn(seahorn::SeaBuiltinsOp::ASSUME, M);
   m_Builder->CreateCall(assumeFn, phi);
 
@@ -526,17 +538,22 @@ BasicBlock *Speculative::getErrorBB(Instruction *I) {
   //TrapCall->setDoesNotThrow();
   TrapCall->setDebugLoc(I->getDebugLoc());
   //m_Builder->CreateUnreachable();
-  for (auto & bb : *I->getParent()->getParent()) {
+  for (auto & bb : *Fn) {
     if (!bb.getTerminator()) continue;
     if (ReturnInst *ret = dyn_cast<ReturnInst>(bb.getTerminator())) {
-      if (ret->getReturnValue())
-        m_Builder->CreateRet(ret->getOperand(0));
-      else
+      if (retPhi) {
+        retPhi->addIncoming(ret->getReturnValue(), &bb);
+        m_Builder->CreateRet(retPhi);
+      } else {
         m_Builder->CreateRetVoid();
+      }
       ret->eraseFromParent();
       m_Builder->SetInsertPoint(&bb);
       m_Builder->CreateBr(retBB);
       phi->addIncoming(m_Builder->getFalse(), &bb);
+      // Todo: Is the early exit correct?
+      //  If not, make sure to set the insertion points and handle the added
+      //  return block correctly.
       break;
     }
   }
