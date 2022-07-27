@@ -1,8 +1,10 @@
-SHELL=/bin/bash
+export SHELL=/bin/bash
 
-CC:=clang-10
+export CC:=clang-10
+export CFLAGS:=-Wall -S -emit-llvm
+export OPTLVL:=-O1
 
-DIRS:=Kocher openssl
+DIRS:=Kocher openssl manual
 CFILES:=$(foreach d, $(DIRS), $(sort $(wildcard $d/*.c)))
 LLFILES:=$(CFILES:.c=.ll)
 
@@ -13,10 +15,11 @@ TMPDIR:=tmp
 .default: compile
 
 %.ll: %.c
-	$(CC) -I../include -Wall -S -emit-llvm -O1 $< -o $@
+	$(CC) $(CFLAGS) -I../include $(OPTLVL) $< -o $@
 
 .PHONY: compile
 compile: $(LLFILES)
+	$(MAKE) $@ -C hacl-star
 
 .PHONY: test
 test: compile $(SCRIPT)
@@ -25,6 +28,7 @@ test: compile $(SCRIPT)
 .PHONY: clean-tests clean-tmpdir clean-all
 clean-tests:
 	rm -f $(LLFILES)
+	$(MAKE) $@ -C hacl-star
 
 clean-tmpdir:
 	rm -f $(TMPDIR)/*.ll
