@@ -9,10 +9,11 @@ choice = "opt"
 repair = True
 
 timecmd = "/usr/bin/time"
-timeout = 6 # minutes
+timeout = 5 # minutes
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
+#testdirs = ["Kocher"]
 testdirs = ["openssl"]
 #testdirs = ["Kocher", "openssl", "hacl-star"]
 iterations = 1
@@ -27,12 +28,14 @@ def run_single_test(llfile, placement, choice):
 
     repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "runtime:%e",
-           "../build/run/bin/sea", "horn", "--solve",
+           "../build/run/bin/sea", "horn", "--solve", "--dsa=sea-cs",
            "-o={}.smt2".format(outfile),
            "--oll={}.ll".format(outfile),
            repairfile,
-           "--step={}".format(step), "--horn-answer", "--horn-tail-simplifier-pve=false",
-           "--horn-subsumption=false", "--horn-inline-all", "--speculative-exe",
+           "--step={}".format(step), "--horn-answer",
+           "--horn-tail-simplifier-pve=false", "--horn-subsumption=false",
+#           "--horn-inline-all",
+           "--speculative-exe",
            "--insert-fences", "--fence-placement={}".format(placement),
            "--fence-choice={}".format(choice)]
 
@@ -45,6 +48,12 @@ def run_single_test(llfile, placement, choice):
         print("Timeout expired for {}!".format(llfile), file=sys.stderr)
         # TODO: kill subprocess
         return (-1, "---$\dagger$")
+
+    print(p.stdout, file=open(outfile + ".out", "w"))
+
+    # TODO: check stderr for errors
+    print(p.stderr, file=sys.stderr)
+    print(p.stderr, file=open(outfile + ".err", "w"))
 
     secure = False
     num_fences = 0
@@ -63,12 +72,6 @@ def run_single_test(llfile, placement, choice):
         if line.startswith("Program not secure"):
             print("  " + line, file=sys.stderr)
             return (-1, "---")
-
-    print(p.stdout, file=open(outfile + ".out", "w"))
-
-    # TODO: check stderr for errors
-    print(p.stderr, file=sys.stderr)
-    print(p.stderr, file=open(outfile + ".err", "w"))
 
     if not secure:
         print("Program still not secure", file=sys.stderr)
