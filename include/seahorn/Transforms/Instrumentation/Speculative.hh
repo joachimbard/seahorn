@@ -46,6 +46,7 @@ namespace seahorn
     Type * m_BoolTy;
     GlobalVariable * m_SpecCount;
     GlobalVariable * m_spec;
+    GlobalVariable * m_spec_error;
 
     size_t m_numOfSpec;
     SpeculativeInfo::FenceType m_numOfFences;
@@ -53,7 +54,7 @@ namespace seahorn
     Value* createNdBoolean (IRBuilder<>& B);
     unsigned getId (const Instruction *n);
 
-    void insertFenceFunction(Module* M, Value* globalSpec);
+    Value *insertFenceFunction(Module* M, Value* globalSpec);
     BasicBlock* addSpeculationBB(std::string name, Value *spec, BasicBlock* bb);
     bool insertSpeculation(BranchInst& inst);
 

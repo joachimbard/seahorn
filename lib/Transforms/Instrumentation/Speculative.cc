@@ -36,12 +36,23 @@ using namespace llvm;
 
 char Speculative::ID = 0;
 
-void Speculative::insertFenceFunction(Module *M, Value *globalSpec) {
+Value *Speculative::insertFenceFunction(Module *M, Value *globalSpec) {
+  // recall insert point
+  BasicBlock *insertBlock = m_Builder->GetInsertBlock();
+  const BasicBlock::iterator insertPoint = m_Builder->GetInsertPoint();
+
   FunctionType *fenceType = FunctionType::get(m_BoolTy, false);
   std::string fenceName = "fence_" + std::to_string(m_numOfFences++);
   Function *fenceFkt = Function::Create(fenceType, Function::ExternalLinkage, fenceName, M);
   fenceFkt->addFnAttr(Attribute::NoInline);
   fenceFkt->addFnAttr(Attribute::NoUnwind);
+  LLVMContext &ctx = M->getContext();
+  BasicBlock *fenceBB = BasicBlock::Create(ctx, "entry", fenceFkt);
+  m_Builder->SetInsertPoint(fenceBB);
+  m_Builder->CreateRet(m_Builder->getFalse());
+
+  // reset insert point
+  m_Builder->SetInsertPoint(insertBlock, insertPoint);
 
   // Todo: add debug location to fence call
   CallInst *fenceCall = m_Builder->CreateCall(fenceFkt);
@@ -53,17 +64,14 @@ void Speculative::insertFenceFunction(Module *M, Value *globalSpec) {
     auto f2 = m_CG->getOrInsertFunction(fenceFkt);
     f1->addCalledFunction(fenceCall, f2);
   }
-  Value *specAndFence = m_Builder->CreateAnd(globalSpec, fenceCall, "");
-  Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
-  m_Builder->CreateCall(assumeNotFn, specAndFence, "");
-
-  LLVMContext &ctx = M->getContext();
-  BasicBlock *fenceBB = BasicBlock::Create(ctx, "entry", fenceFkt);
-  m_Builder->SetInsertPoint(fenceBB);
-//  Value *nd = m_Builder->CreateCall(m_ndBoolFn);
-//  m_Builder->CreateRet(nd);
-  m_Builder->CreateRet(m_Builder->getFalse());
-  m_Builder->ClearInsertionPoint();
+  // Note: change fence semantics
+//  Value *specAndFence = m_Builder->CreateAnd(globalSpec, fenceCall, "");
+//  Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
+//  Instruction *assumeCall = m_Builder->CreateCall(assumeNotFn, specAndFence, "");
+  Value *notFence = m_Builder->CreateNot(fenceCall);
+  Value *newSpec = m_Builder->CreateAnd(globalSpec, notFence);
+  m_Builder->CreateAlignedStore(newSpec, m_spec, 1);
+  return newSpec;
 }
 
 BasicBlock *Speculative::addSpeculationBB(std::string name, Value *spec, BasicBlock *bb) {
@@ -75,6 +83,7 @@ BasicBlock *Speculative::addSpeculationBB(std::string name, Value *spec, BasicBl
   m_Builder->CreateAlignedStore(globalSpec, m_spec, 1);
   if (FencePlacement == FencePlaceOpt::AFTER_BRANCH) {
     insertFenceFunction(specBB->getModule(), globalSpec);
+    // Todo: Needed? The above call should already handle that.
     m_Builder->SetInsertPoint(specBB);
   }
   m_Builder->CreateBr(bb);
@@ -298,11 +307,13 @@ bool Speculative::runOnFunction(Function &F) {
       }
     }
   }
-  Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
+  // Note: change fence semantics
+//  Function *assumeNotFn = SBI->mkSeaBuiltinFn(SeaBuiltinsOp::ASSUME_NOT, *M);
   for (Instruction *I : manualFences) {
     m_Builder->SetInsertPoint(I);
-    Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
-    m_Builder->CreateCall(assumeNotFn, globalSpec, "");
+//    Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
+//    m_Builder->CreateCall(assumeNotFn, globalSpec, "");
+    m_Builder->CreateAlignedStore(m_Builder->getFalse(), m_spec, 1);
   }
 
   // Collect all basic blocks
@@ -317,6 +328,18 @@ bool Speculative::runOnFunction(Function &F) {
 	  changed |= runOnBasicBlock(*B);
 
   addAssertions(F, WorkList);
+
+  // check error flag
+  if (F.getName().equals("main")) {
+    for (BasicBlock *bb : BBWorkList) {
+      Instruction *ret = bb->getTerminator();
+      if (ret && isa<ReturnInst>(ret)) {
+        m_Builder->SetInsertPoint(ret);
+        Value *specErr = m_Builder->CreateAlignedLoad(m_spec_error, 1);
+        emitBranchToTrap(ret, specErr);
+      }
+    }
+  }
 
   return changed;
 }
@@ -416,6 +439,10 @@ bool Speculative::runOnModule(llvm::Module &M) {
                               ConstantInt::get(ctx, APInt(1, 0)),
                               "__global_spec__");
   m_spec->setAlignment(1);
+  m_spec_error = new GlobalVariable(M, m_BoolTy, false, GlobalValue::CommonLinkage,
+                              ConstantInt::get(ctx, APInt(1, 0)),
+                              "__spec_error__");
+  m_spec_error->setAlignment(1);
 
   if (HasErrorFunc) {
 
@@ -588,7 +615,6 @@ void Speculative::emitBranchToTrap(Instruction *I, Value *Cmp) {
 void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 
   m_Builder->SetInsertPoint(&inst);
-  outs() << "Insertion point set...\n";
 
 //  BasicBlock *OldBB0 = inst.getParent();
 //  BasicBlock *Cont0 = OldBB0->splitBasicBlock(B.GetInsertPoint());
@@ -614,15 +640,19 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 
   Value *globalSpec = m_Builder->CreateAlignedLoad(m_spec, 1);
   if (FencePlacement == FencePlaceOpt::BEFORE_MEMORY) {
-    insertFenceFunction(inst.getModule(), globalSpec);
+    globalSpec = insertFenceFunction(inst.getModule(), globalSpec);
   }
+  Value *specErr = m_Builder->CreateAlignedLoad(m_spec_error, 1);
+  specErr = m_Builder->CreateOr(specErr, globalSpec);
+  m_Builder->CreateAlignedStore(specErr, m_spec_error, 1);
 
   //auto assertFn = SBI->mkSeaBuiltinFn(seahorn::SeaBuiltinsOp::ASSERT_NOT, *F.getParent());
   //m_Builder->SetInsertPoint(&inst);
   //Value *ndSpec = m_Builder->CreateCall(m_ndBoolFn, None);
   //m_Builder->CreateCall(assertFn, ndSpec, "");
 
-  emitBranchToTrap(&inst, globalSpec);
+  // Todo: removed branch in favor of error flag
+//  emitBranchToTrap(&inst, globalSpec);
 
 //  outs() << "Assertion expression created...\n";
 //  BasicBlock *BB = inst.getParent();
@@ -638,8 +668,6 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 //  BasicBlock *Cont1 = OldBB1->splitBasicBlock(B.GetInsertPoint());
 //  OldBB1->getTerminator()->eraseFromParent();
 //  BranchInst::Create(Cont1, err_spec_bb, specCheck, OldBB1);
-
-  outs() << "Added A SPECULATION check...\n";
 }
 
 } // namespace seahorn
