@@ -15,6 +15,7 @@ tmpdir = "tmp"
 texfilename = "table.tex"
 #testdirs = ["Kocher"]
 testdirs = ["openssl"]
+#testdirs = ["tmp/testdir"]
 #testdirs = ["Kocher", "openssl", "hacl-star"]
 iterations = 1
 test_placements = ["after-branch", "before-memory"]
@@ -28,13 +29,14 @@ def run_single_test(llfile, placement, choice):
 
     repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "runtime:%e",
-           "../build/run/bin/sea", "horn", "--solve", "--dsa=sea-cs",
+           "../build/run/bin/sea", "horn", "--solve",
+           "--dsa=sea-cs",
            "-o={}.smt2".format(outfile),
            "--oll={}.ll".format(outfile),
            repairfile,
            "--step={}".format(step), "--horn-answer",
            "--horn-tail-simplifier-pve=false", "--horn-subsumption=false",
-#           "--horn-inline-all",
+           "--horn-inline-all",
            "--speculative-exe",
            "--insert-fences", "--fence-placement={}".format(placement),
            "--fence-choice={}".format(choice)]
@@ -46,6 +48,7 @@ def run_single_test(llfile, placement, choice):
         p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
     except subprocess.TimeoutExpired:
         print("Timeout expired for {}!".format(llfile), file=sys.stderr)
+        print("Timeout expired!", file=open(outfile + ".err", "w"))
         # TODO: kill subprocess
         return (-1, "---$\dagger$")
 
@@ -81,10 +84,13 @@ def run_single_test(llfile, placement, choice):
 
 if sys.argv[1] == "--all":
     texfile = open("{}/{}".format(tmpdir, texfilename), "w")
-    print("\\begin{tabular}{l|cc|cc|cc}\n\\toprule", file=texfile)
+    print("\\begin{tabular}{l", end="", file=texfile)
+    for _ in test_placements:
+        print("|cc", end="", file=texfile)
+    print("}\n\\toprule", file=texfile)
     print("\\textbf{Benchmark}", end="", file=texfile)
     for placement in test_placements:
-        print("", "\multicolumn{2}{c|}{\\textbf{" + placement + "}}", sep=delim,
+        print("", "\multicolumn{2}{c}{\\textbf{" + placement + "}}", sep=delim,
                 end="", file=texfile)
     print("\\\\", file=texfile)
     for _ in test_placements:
