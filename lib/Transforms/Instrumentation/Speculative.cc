@@ -49,7 +49,9 @@ Value *Speculative::insertFenceFunction(Module *M, Value *globalSpec) {
   LLVMContext &ctx = M->getContext();
   BasicBlock *fenceBB = BasicBlock::Create(ctx, "entry", fenceFkt);
   m_Builder->SetInsertPoint(fenceBB);
-  m_Builder->CreateRet(m_Builder->getFalse());
+  Value *nd = m_Builder->CreateCall(m_ndBoolFn);
+  m_Builder->CreateRet(nd);
+  //  m_Builder->CreateRet(m_Builder->getFalse());
 
   // reset insert point
   m_Builder->SetInsertPoint(insertBlock, insertPoint);
