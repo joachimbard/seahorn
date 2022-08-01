@@ -29,7 +29,8 @@ def run_single_test(llfile, placement, choice):
 
     repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "runtime:%e",
-           "../build/run/bin/sea", "horn", "--solve", "--dsa=sea-cs",
+           "../build/run/bin/sea", "horn", "--solve",
+           "--dsa=sea-cs",
            "-o={}.smt2".format(outfile),
            "--oll={}.ll".format(outfile),
            repairfile,
@@ -47,6 +48,7 @@ def run_single_test(llfile, placement, choice):
         p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
     except subprocess.TimeoutExpired:
         print("Timeout expired for {}!".format(llfile), file=sys.stderr)
+        print("Timeout expired!", file=open(outfile + ".err", "w"))
         # TODO: kill subprocess
         return (-1, "---$\dagger$")
 
