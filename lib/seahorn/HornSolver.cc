@@ -295,14 +295,20 @@ end_search:
         Function *fence = M.getFunction(name);
         if (fence) {
           fence->print(outs());
+//          fence->deleteBody();
+//          fence->setLinkage(llvm::GlobalValue::InternalLinkage);
           LLVMContext &ctx = M.getContext();
           IRBuilder<> B(ctx);
           for (BasicBlock &BB : *fence) {
-            if (ReturnInst *RI = dyn_cast<ReturnInst>(BB.getTerminator())) {
-              RI->setOperand(0, B.getTrue());
-              break;
+            for (Instruction &I : BB) {
+              if (ReturnInst *RI = dyn_cast<ReturnInst>(&I)) {
+                RI->setOperand(0, B.getTrue());
+              }
             }
           }
+//          BasicBlock *bb = BasicBlock::Create(ctx, "entry", fence);
+//          B.SetInsertPoint(bb);
+//          B.CreateRet(B.getTrue());
           fence->print(outs());
         } else { errs() << "could not insert fence " << name << " to module\n"; }
         Expr rule;
