@@ -2,11 +2,13 @@ export SHELL=/bin/bash
 
 export CC:=clang-10
 export CFLAGS:=-Wall -S -emit-llvm
-export OPTLVL:=-O1
+export OPTLVL:=-O2
 
 DIRS:=Kocher openssl manual
-CFILES:=$(foreach d, $(DIRS), $(sort $(wildcard $d/*.c)))
+AUXFILES:=$(foreach d, $(DIRS), $(sort $(wildcard $d/*aux.c)))
+CFILES:=$(foreach d, $(DIRS), $(sort $(filter-out $(AUXFILES), $(wildcard $d/*.c))))
 LLFILES:=$(CFILES:.c=.ll)
+TESTFILES:=$(LLFILES:.ll=)
 
 SEAHORN:=../build/run/bin/seahorn
 SCRIPT:=run-test.py
@@ -17,9 +19,18 @@ TMPDIR:=tmp
 %.ll: %.c
 	$(CC) $(CFLAGS) -I../include $(OPTLVL) $< -o $@
 
+%.o: %.c
+	$(CC) -Wall -c $(OPTLVL) $< -o $@
+
+%: %.ll $(AUXFILES:.c=.o)
+	$(CC) -Wall -O0 $^ -o $@
+
 .PHONY: compile
 compile: $(LLFILES)
 	$(MAKE) $@ -C hacl-star
+
+.PHONY: compile-aux
+compile-aux: $(TESTFILES)
 
 .PHONY: test
 test: compile $(SCRIPT)
