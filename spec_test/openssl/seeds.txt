@@ -1,0 +1,6 @@
+// from https://www.random.org/bytes/
+0x83cbefca
+0xf0d8e99c
+0x34815f43
+0xb43e3d1a
+0x7872b625
