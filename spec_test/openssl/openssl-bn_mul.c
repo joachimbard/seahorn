@@ -1,11 +1,8 @@
 #include <stddef.h>
 #include <string.h>
-#include "openssl.h"
+#include "openssl-bn.h"
+#include "openssl-bn-aux.h"
 #include <seahorn/seahorn.h>
-
-extern void __taint(BIGNUM*);
-//extern void __taint(BN_CTX*);
-extern void display(void*);
 
 //#ifndef OPENSSL_SMALL_FOOTPRINT
 //# define BN_MUL_COMBA
@@ -17,21 +14,18 @@ extern void display(void*);
 
 int main() {
   BN_CTX *ctx = BN_CTX_new();
-//  __taint(ctx);
+  // TODO: BN_CTX_get returns zero bignum
+  // better use init_bn() or search for something appropriate in the original repo
   BIGNUM *r = BN_CTX_get(ctx);
   BIGNUM *a = BN_CTX_get(ctx);
   BIGNUM *b = BN_CTX_get(ctx);
 
-  __taint(r);
-  __taint(a);
-  __taint(b);
-
   BN_mul(r, a, b, ctx);
 
   // to avoid optimizations
-  display(ctx);
-  display(r);
-  display(a);
-  display(b);
+  display_ctx(ctx);
+  display_bn(r);
+  display_bn(a);
+  display_bn(b);
   return 0;
 }

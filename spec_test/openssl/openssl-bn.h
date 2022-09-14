@@ -1,11 +1,16 @@
 // include/openssl/types.h
+typedef struct bio_st BIO;
 typedef struct bignum_st BIGNUM;
 typedef struct bignum_ctx BN_CTX;
+typedef struct bn_blinding_st BN_BLINDING;
+typedef struct bn_mont_ctx_st BN_MONT_CTX;
+typedef struct bn_recp_ctx_st BN_RECP_CTX;
+typedef struct bn_gencb_st BN_GENCB;
+typedef struct buf_mem_st BUF_MEM;
+
 // XXX: we keep the context abstract here
 // definition in context.c
 typedef struct ossl_lib_ctx_st OSSL_LIB_CTX;
-typedef struct bn_mont_ctx_st BN_MONT_CTX;
-typedef struct bn_recp_ctx_st BN_RECP_CTX;
 
 
 // include/openssl/bn.h
