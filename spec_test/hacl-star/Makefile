@@ -1,19 +1,16 @@
-include ../Makefile
+include ../Makefile.common
 
 INCFLAGS := -I. -Ikaramel/include -Ikaramel/krmllib/dist/minimal/
 
 CFILES := $(sort $(wildcard *test.c))
 LLFILES := $(CFILES:.c=.ll)
 
-.default: compile
-
 %.ll: %.c
-	$(CC) $(CFLAGS) $(INCFLAGS) $(OPTLVL) $< -o $@
+	$(CC) $(INCFLAGS) $(CFLAGS) $(OPTLVL) $< -o $@
 
 .PHONY: compile
 compile: $(LLFILES)
-	
 
-.PHONY: clean-tests
-clean-tests:
+.PHONY: clean
+clean:
 	rm -f $(LLFILES)
