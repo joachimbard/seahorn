@@ -11,13 +11,13 @@ EXECS:=$(LLFILES:.ll=)
 %.o: %.c
 	$(CC) -Wall -c $(OPTLVL) $< -o $@
 
-openssl/openssl-aes_encrypt: openssl/openssl-aes_encrypt.ll openssl/openssl-aes-aux.c
+openssl-aes_encrypt: openssl-aes_encrypt.ll openssl-aes-aux.c
 	$(CC) -Wall -O0 $^ -o $@
 
-openssl/openssl-aes_encrypt_ct: openssl/openssl-aes_encrypt_ct.ll openssl/openssl-aes-aux.c
+openssl-aes_encrypt_ct: openssl-aes_encrypt_ct.ll openssl-aes-aux.c
 	$(CC) -Wall -O0 $^ -o $@
 
-openssl/openssl-bn_mul: openssl/openssl-bn_mul.ll openssl/openssl-bn-aux.c
+openssl-bn_mul: openssl-bn_mul.ll openssl-bn-aux.c
 	$(CC) -Wall -O0 $^ -o $@
 
 # $(EXECS): %: %.ll
@@ -26,8 +26,8 @@ openssl/openssl-bn_mul: openssl/openssl-bn_mul.ll openssl/openssl-bn-aux.c
 .PHONY: compile
 compile: $(LLFILES)
 
-.PHONY: compile-aux
-compile-aux: $(EXECS)
+.PHONY: build-exec
+build-exec: $(EXECS)
 
 .PHONY: test
 test: compile

@@ -10,8 +10,9 @@ TMPDIR:=tmp
 compile:
 	@for d in $(DIRS); do $(MAKE) $@ -C $$d; done
 
-.PHONY: compile-aux
-compile-aux:
+.PHONY: build-exec
+build-exec:
+	@for d in $(DIRS); do $(MAKE) $@ -C $$d; done
 
 .PHONY: test
 test: compile $(SCRIPT)

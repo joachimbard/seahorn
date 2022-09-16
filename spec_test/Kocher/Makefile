@@ -9,6 +9,9 @@ LLFILES:=$(CFILES:.c=.ll)
 .PHONY: compile
 compile: $(LLFILES)
 
+.PHONY: build-exec
+build-exec: ;
+
 .PHONY: test
 test: compile
 
