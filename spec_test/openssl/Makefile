@@ -4,6 +4,8 @@ AUXFILES:=$(sort $(wildcard *aux.c))
 CFILES:=$(sort $(filter-out $(AUXFILES), $(wildcard *.c)))
 LLFILES:=$(CFILES:.c=.ll)
 EXECS:=$(LLFILES:.ll=)
+AES_EXECS:=$(filter openssl-aes%, $(EXECS))
+BN_EXECS:=$(filter openssl-bn%, $(EXECS))
 
 %.ll: %.c
 	$(CC) $(CFLAGS) $(OPTLVL) $< -o $@
@@ -11,20 +13,20 @@ EXECS:=$(LLFILES:.ll=)
 %.o: %.c
 	$(CC) -Wall -c $(OPTLVL) $< -o $@
 
-openssl-aes_encrypt: openssl-aes_encrypt.ll openssl-aes-aux.c
+$(AES_EXECS): %: %.ll openssl-aes-aux.c
 	$(CC) -Wall -O0 $^ -o $@
 
-openssl-aes_encrypt_ct: openssl-aes_encrypt_ct.ll openssl-aes-aux.c
+$(BN_EXECS): %: %.ll openssl-bn-aux.c
 	$(CC) -Wall -O0 $^ -o $@
-
-openssl-bn_mul: openssl-bn_mul.ll openssl-bn-aux.c
-	$(CC) -Wall -O0 $^ -o $@
-
-# $(EXECS): %: %.ll
-# 	@echo no rule
 
 .PHONY: compile
 compile: $(LLFILES)
+
+.PHONY: build-aes-exec
+build-aes-exec: $(AES_EXECS)
+
+.PHONY: build-bn-exec
+build-bn-exec: $(BN_EXECS)
 
 .PHONY: build-exec
 build-exec: $(EXECS)
