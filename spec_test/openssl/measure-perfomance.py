@@ -2,7 +2,7 @@ import sys
 import subprocess
 
 timecmd = "/usr/bin/time"
-timeout = 5 # seconds
+timeout = 10 # seconds
 
 def get_seeds():
     result = [];
