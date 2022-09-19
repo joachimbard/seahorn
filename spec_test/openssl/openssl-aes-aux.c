@@ -38,8 +38,13 @@ unsigned char *init_array(bool is_in) {
 unsigned char *init_ivec() {
   for (unsigned i = 0; i < AES_BLOCK_SIZE; ++i) {
     // put "random" values into 'ivec'
-    in[i] = rand();
+    ivec[i] = rand();
   }
+  printf("ivec: 0x%.2x", ivec[0]);
+  for (unsigned i = 1; i < AES_BLOCK_SIZE; ++i) {
+    printf("%.2x", ivec[i]);
+  }
+  printf("\n");
   return ivec;
 }
 
