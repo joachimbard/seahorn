@@ -1,6 +1,5 @@
 #include "openssl-aes.h"
 #include "openssl-aes-aux.h"
-#include <seahorn/seahorn.h>
 
 /* This controls loop-unrolling in aes_core.c */
 // #define FULL_UNROLL
@@ -10,11 +9,14 @@
 
 int main(int argc, char **argv) {
   init_seed(argv);
-  unsigned char *in = init_array();
-  unsigned char *out = init_array();
-  AES_KEY *key = init_key();
+  unsigned char *in = init_array(true);
+  unsigned char *out = init_array(false);
+  AES_KEY key;
+  init_key(&key);
 
-  AES_encrypt(in, out, key);
+  start_clock();
+  AES_encrypt(in, out, &key);
+  end_clock();
 
   // to avoid optimizations
   display_aes(out);

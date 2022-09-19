@@ -1,6 +1,5 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
+#include <time.h>
 
 #include "openssl-aes.h"
 #include "openssl-aes-aux.h"
@@ -8,22 +7,26 @@
 int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
                         AES_KEY *key);
 
-#define ARRAY_SIZE (AES_BLOCK_SIZE)
+#define ARRAY_SIZE (1024 * 1024 * 8 * AES_BLOCK_SIZE)
 
 unsigned seed;
 unsigned char in[ARRAY_SIZE];
 unsigned char out[ARRAY_SIZE] = {0};
-bool first_init = true;
+unsigned char ivec[AES_BLOCK_SIZE];
+double tstart = 0.0;
 
 void init_seed(char** arg) {
   seed = strtoul(arg[1], NULL, 16);
   printf("seed is: 0x%x\n", seed);
+  srand(seed);
 }
 
-unsigned char *init_array() {
-  if (first_init) {
-    first_init = false;
-    srand(seed);
+size_t get_length() {
+  return ARRAY_SIZE;
+}
+
+unsigned char *init_array(bool is_in) {
+  if (is_in) {
     for (unsigned i = 0; i < ARRAY_SIZE; ++i) {
       // put "random" values into 'in'
       in[i] = rand();
@@ -32,26 +35,46 @@ unsigned char *init_array() {
   } else { return out; }
 }
 
-AES_KEY *init_key() {
-  AES_KEY *key = (AES_KEY*) malloc(sizeof(AES_KEY));
+unsigned char *init_ivec() {
+  for (unsigned i = 0; i < AES_BLOCK_SIZE; ++i) {
+    // put "random" values into 'ivec'
+    in[i] = rand();
+  }
+  return ivec;
+}
+
+void init_key(AES_KEY *key) {
   unsigned char userKey[32];
   for (unsigned i = 0; i < (sizeof(userKey) / sizeof(userKey[0])); ++i) {
     // put "random" values into 'userKey'
     userKey[i] = rand();
   }
   AES_set_encrypt_key(userKey, 256, key);
-  return key;
+}
+
+void start_clock() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  tstart = 1000.0 * ts.tv_sec + 1e-6 * ts.tv_nsec;
+}
+
+void end_clock() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  double tend = 1000.0 * ts.tv_sec + 1e-6 * ts.tv_nsec;
+  // diff in ms
+  fprintf(stderr, "clock diff: %.2f\n", tend - tstart);
 }
 
 void display_aes(unsigned char *out) {
-  printf("encrypted: 0x%.2x", out[0]);
-  for (unsigned i = 1; i < ARRAY_SIZE; ++i) {
-    printf(" %.2x", out[i]);
-  }
-  printf("\n");
+//  printf("encrypted: 0x%.2x", out[0]);
+//  for (unsigned i = 1; i < ARRAY_SIZE; ++i) {
+//    printf(" %.2x", out[i]);
+//  }
+//  printf("\n");
 }
 
-#ifdef NO_SET_KEY
+#if false
 // from Openssl (non-constant-time)
 // TODO: this needs to be the same as in the testcase
 static const u32 Te0[256] = {
