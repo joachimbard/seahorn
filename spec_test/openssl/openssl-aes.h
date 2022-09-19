@@ -32,3 +32,13 @@ struct aes_key_st {
     int rounds;
 };
 typedef struct aes_key_st AES_KEY;
+
+// include/openssl/modes.h
+typedef void (*block128_f) (const unsigned char in[16],
+                            unsigned char out[16], const void *key);
+void CRYPTO_cbc128_encrypt(const unsigned char *in, unsigned char *out,
+                           size_t len, const void *key,
+                           unsigned char ivec[16], block128_f block);
+void CRYPTO_cbc128_decrypt(const unsigned char *in, unsigned char *out,
+                           size_t len, const void *key,
+                           unsigned char ivec[16], block128_f block);
