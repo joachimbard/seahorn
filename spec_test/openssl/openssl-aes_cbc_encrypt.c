@@ -7,7 +7,20 @@
 
 #include "openssl-aes_core_impl.h"
 #include "openssl-aes_cbc128_impl.h"
-#include "openssl-aes_cbc_encrypt_impl.h"
+
+// from crypto/aes/aes_cbc.c
+void AES_cbc_encrypt(const unsigned char *in, unsigned char *out,
+                     size_t len, const AES_KEY *key,
+                     unsigned char *ivec, const int enc)
+{
+
+    if (enc)
+        CRYPTO_cbc128_encrypt(in, out, len, key, ivec,
+                              (block128_f) AES_encrypt);
+    else
+        CRYPTO_cbc128_decrypt(in, out, len, key, ivec,
+                              (block128_f) AES_decrypt);
+}
 
 int main(int argc, char **argv) {
   init_seed(argv);
