@@ -2,7 +2,7 @@ import sys
 import subprocess
 
 timecmd = "/usr/bin/time"
-timeout = 10 # seconds
+timeout = 30 # seconds
 
 def get_seeds():
     result = [];
@@ -22,7 +22,6 @@ def run_single(testcase, seeds):
 
         try:
             p = subprocess.run(cmd, timeout=timeout, check=True, capture_output=True, text=True)
-#            p = subprocess.run(cmd, timeout=timeout, check=True, capture_output=False, text=True)
         except subprocess.TimeoutExpired:
             print("Timeout ({}s) expired for {}!".format(timeout, testcase), file=sys.stderr)
             return -1
@@ -30,7 +29,6 @@ def run_single(testcase, seeds):
         print(p.stderr, file=sys.stderr)
         print(p.stdout, file=sys.stdout)
         for line in p.stderr.splitlines():
-            print(line)
             if line.startswith("runtime:"):
                 runtime += float(line[len("runtime:"):])
             if line.startswith("clock diff:"):
