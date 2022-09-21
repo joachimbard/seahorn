@@ -46,10 +46,17 @@ def run_single_test(llfile, placement, choice):
 
     try:
         p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
-    except subprocess.TimeoutExpired:
-        print("Timeout expired for {}!".format(llfile), file=sys.stderr)
-        print("Timeout expired!", file=open(outfile + ".err", "w"))
-        # TODO: kill subprocess
+#        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=False, text=True)
+    except subprocess.TimeoutExpired as e:
+        print("Timeout ({}min) expired for {}!".format(timeout, llfile), file=sys.stderr)
+        print("Timeout ({}min) expired!".format(timeout), file=open(outfile + ".err", "w"))
+        out_str = e.stdout.decode()
+        err_str = e.stderr.decode()
+        print(out_str, file=open(outfile + ".out", "w"))
+        print(err_str, file=sys.stderr)
+        print(err_str, file=open(outfile + ".err", "w"))
+        # kill the seahorn subprocess
+        subprocess.run(["pkill", "seahorn"])
         return (-1, "---$\dagger$")
 
     print(p.stdout, file=open(outfile + ".out", "w"))
