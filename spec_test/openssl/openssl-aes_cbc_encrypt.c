@@ -1,9 +1,9 @@
-#include "openssl-aes.h"
-#include "openssl-aes-aux.h"
-
 /* This controls loop-unrolling in aes_core.c */
 // #define FULL_UNROLL
 #define OPENSSL_NO_AES_CONST_TIME
+
+#include "openssl-aes.h"
+#include "openssl-aes-aux.h"
 
 #include "openssl-aes_core_impl.h"
 #include "openssl-aes_cbc128_impl.h"
