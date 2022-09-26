@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <limits.h>
 
 // include/openssl/e_os2.h
 #define ossl_inline inline
@@ -27,14 +28,21 @@ typedef void CRYPTO_RWLOCK;
         CRYPTO_malloc(num, OPENSSL_FILE, OPENSSL_LINE)
 # define OPENSSL_zalloc(num) \
         CRYPTO_zalloc(num, OPENSSL_FILE, OPENSSL_LINE)
+# define OPENSSL_clear_free(addr, num) \
+        CRYPTO_clear_free(addr, num, OPENSSL_FILE, OPENSSL_LINE)
 # define OPENSSL_secure_zalloc(num) \
         CRYPTO_secure_zalloc(num, OPENSSL_FILE, OPENSSL_LINE)
+# define OPENSSL_secure_clear_free(addr, num) \
+        CRYPTO_secure_clear_free(addr, num, OPENSSL_FILE, OPENSSL_LINE)
 typedef void *(*CRYPTO_malloc_fn)(size_t num, const char *file, int line);
 typedef void (*CRYPTO_free_fn)(void *addr, const char *file, int line);
 void *CRYPTO_malloc(size_t num, const char *file, int line);
 void *CRYPTO_zalloc(size_t num, const char *file, int line);
 void CRYPTO_free(void *ptr, const char *file, int line);
+void CRYPTO_clear_free(void *ptr, size_t num, const char *file, int line);
 void *CRYPTO_secure_zalloc(size_t num, const char *file, int line);
+void CRYPTO_secure_clear_free(void *ptr, size_t num,
+                              const char *file, int line);
 void OPENSSL_cleanse(void *ptr, size_t len);
 
 
@@ -61,6 +69,8 @@ void bn_correct_top(BIGNUM *a);
 
 void BN_set_flags(BIGNUM *b, int n);
 int BN_get_flags(const BIGNUM *b, int n);
+
+# define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
 int BN_abs_is_word(const BIGNUM *a, const BN_ULONG w);
 int BN_is_zero(const BIGNUM *a);
@@ -240,6 +250,18 @@ struct bn_recp_ctx_st {
     int flags;
 };
 
+/* Used for slow "generation" functions. */
+struct bn_gencb_st {
+    unsigned int ver;           /* To handle binary (in)compatibility */
+    void *arg;                  /* callback-specific data */
+    union {
+        /* if (ver==1) - handles old style callbacks */
+        void (*cb_1) (int, int, void *);
+        /* if (ver==2) - new callback style */
+        int (*cb_2) (int, int, BN_GENCB *);
+    } cb;
+};
+
 # define MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH      ( 64 )
 # define MOD_EXP_CTIME_MIN_CACHE_LINE_MASK       (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - 1)
 
@@ -296,9 +318,16 @@ BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
+static ossl_inline BIGNUM *bn_expand(BIGNUM *a, int bits)
+{
+    if (bits > (INT_MAX - BN_BITS2 + 1))
+        return NULL;
 
-// defintions are in bn_lib.c
-static void bn_free_d(BIGNUM *a, int clear);
+    if (((bits+BN_BITS2-1)/BN_BITS2) <= (a)->dmax)
+        return a;
+
+    return bn_expand2((a),(bits+BN_BITS2-1)/BN_BITS2);
+}
 
 
 // include/openssl/macros.h
@@ -380,7 +409,27 @@ void ERR_set_error(int lib, int reason, const char *fmt, ...);
 
 
 // include/internal/constant_time.h
-static ossl_inline unsigned int constant_time_eq_int(int a, int b);
+static ossl_inline unsigned int constant_time_msb(unsigned int a)
+{
+    return 0 - (a >> (sizeof(a) * 8 - 1));
+}
+
+static ossl_inline unsigned int constant_time_is_zero(unsigned int a)
+{
+    return constant_time_msb(~a & (a - 1));
+}
+
+static ossl_inline unsigned int constant_time_eq(unsigned int a,
+                                                 unsigned int b)
+{
+    return constant_time_is_zero(a ^ b);
+}
+
+static ossl_inline unsigned int constant_time_eq_int(int a, int b)
+{
+    return constant_time_eq((unsigned)(a), (unsigned)(b));
+}
+
 
 
 // include/openssl/trace.h
@@ -399,3 +448,42 @@ static ossl_inline unsigned int constant_time_eq_int(int a, int b);
 
 // include/openssl/bio.h.in
 int BIO_printf(BIO *bio, const char *format, ...);
+
+
+// include/internal/endian.h
+/*
+ * IS_LITTLE_ENDIAN and IS_BIG_ENDIAN can be used to detect the endiannes
+ * at compile time. To use it, DECLARE_IS_ENDIAN must be used to declare
+ * a variable.
+ *
+ * L_ENDIAN and B_ENDIAN can be used at preprocessor time. They can be set
+ * in the configarion using the lib_cppflags variable. If neither is
+ * set, it will fall back to code works with either endianness.
+ */
+
+# if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+#  define DECLARE_IS_ENDIAN const int ossl_is_little_endian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#  define IS_LITTLE_ENDIAN (ossl_is_little_endian)
+#  define IS_BIG_ENDIAN (!ossl_is_little_endian)
+#  if defined(L_ENDIAN) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#   error "L_ENDIAN defined on a big endian machine"
+#  endif
+#  if defined(B_ENDIAN) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#   error "B_ENDIAN defined on a little endian machine"
+#  endif
+#  if !defined(L_ENDIAN) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#   define L_ENDIAN
+#  endif
+#  if !defined(B_ENDIAN) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#   define B_ENDIAN
+#  endif
+# else
+#  define DECLARE_IS_ENDIAN \
+    const union { \
+        long one; \
+        char little; \
+    } ossl_is_endian = { 1 }
+
+#  define IS_LITTLE_ENDIAN (ossl_is_endian.little != 0)
+#  define IS_BIG_ENDIAN    (ossl_is_endian.little == 0)
+# endif
