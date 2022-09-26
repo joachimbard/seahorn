@@ -1,3 +1,8 @@
+#include <stdlib.h>
+
+// include/openssl/e_os2.h
+#define ossl_inline inline
+
 // include/openssl/types.h
 typedef struct bio_st BIO;
 typedef struct bignum_st BIGNUM;
@@ -13,7 +18,31 @@ typedef struct buf_mem_st BUF_MEM;
 typedef struct ossl_lib_ctx_st OSSL_LIB_CTX;
 
 
+// include/openssl/crypto.h.in
+typedef void CRYPTO_RWLOCK;
+# define OPENSSL_free(addr) \
+        CRYPTO_free(addr, OPENSSL_FILE, OPENSSL_LINE)
+
+# define OPENSSL_malloc(num) \
+        CRYPTO_malloc(num, OPENSSL_FILE, OPENSSL_LINE)
+# define OPENSSL_zalloc(num) \
+        CRYPTO_zalloc(num, OPENSSL_FILE, OPENSSL_LINE)
+# define OPENSSL_secure_zalloc(num) \
+        CRYPTO_secure_zalloc(num, OPENSSL_FILE, OPENSSL_LINE)
+typedef void *(*CRYPTO_malloc_fn)(size_t num, const char *file, int line);
+typedef void (*CRYPTO_free_fn)(void *addr, const char *file, int line);
+void *CRYPTO_malloc(size_t num, const char *file, int line);
+void *CRYPTO_zalloc(size_t num, const char *file, int line);
+void CRYPTO_free(void *ptr, const char *file, int line);
+void *CRYPTO_secure_zalloc(size_t num, const char *file, int line);
+void OPENSSL_cleanse(void *ptr, size_t len);
+
+
 // include/openssl/bn.h
+BIGNUM *bn_wexpand(BIGNUM *a, int words);
+BIGNUM *bn_expand2(BIGNUM *a, int words);
+void bn_correct_top(BIGNUM *a);
+
 // with SIXTY_FOUR_BIT_LONG
 #define SIXTY_FOUR_BIT_LONG
 # ifdef SIXTY_FOUR_BIT_LONG
@@ -24,13 +53,63 @@ typedef struct ossl_lib_ctx_st OSSL_LIB_CTX;
 # define BN_BITS2       (BN_BYTES * 8)
 # define BN_BITS        (BN_BITS2 * 2)
 
+# define BN_FLG_MALLOCED         0x01
+# define BN_FLG_STATIC_DATA      0x02
+
 # define BN_FLG_CONSTTIME        0x04
 # define BN_FLG_SECURE           0x08
+
+void BN_set_flags(BIGNUM *b, int n);
+int BN_get_flags(const BIGNUM *b, int n);
+
+int BN_abs_is_word(const BIGNUM *a, const BN_ULONG w);
+int BN_is_zero(const BIGNUM *a);
+int BN_is_one(const BIGNUM *a);
+int BN_is_word(const BIGNUM *a, const BN_ULONG w);
+int BN_is_odd(const BIGNUM *a);
+
+int BN_ucmp(const BIGNUM *a, const BIGNUM *b);
+int BN_set_bit(BIGNUM *a, int n);
+int BN_clear_bit(BIGNUM *a, int n);
+
+BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);
+BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w);
+int BN_mul_word(BIGNUM *a, BN_ULONG w);
+int BN_add_word(BIGNUM *a, BN_ULONG w);
+int BN_sub_word(BIGNUM *a, BN_ULONG w);
 int BN_set_word(BIGNUM *a, BN_ULONG w);
+BN_ULONG BN_get_word(const BIGNUM *a);
+
 #define BN_one(a) (BN_set_word((a),1))
 void BN_zero_ex(BIGNUM *a);
 #define BN_zero(a) BN_zero_ex(a)
+
+const BIGNUM *BN_value_one(void);
+char *BN_options(void);
+BN_CTX *BN_CTX_new_ex(OSSL_LIB_CTX *ctx);
+BN_CTX *BN_CTX_new(void);
+BN_CTX *BN_CTX_secure_new_ex(OSSL_LIB_CTX *ctx);
+BN_CTX *BN_CTX_secure_new(void);
+void BN_CTX_free(BN_CTX *c);
+void BN_CTX_start(BN_CTX *ctx);
+BIGNUM *BN_CTX_get(BN_CTX *ctx);
+void BN_CTX_end(BN_CTX *ctx);
+int BN_num_bits(const BIGNUM *a);
 int BN_num_bits_word(BN_ULONG l);
+int BN_security_bits(int L, int N);
+BIGNUM *BN_new(void);
+BIGNUM *BN_secure_new(void);
+void BN_clear_free(BIGNUM *a);
+BIGNUM *BN_copy(BIGNUM *a, const BIGNUM *b);
+void BN_swap(BIGNUM *a, BIGNUM *b);
+
+int BN_cmp(const BIGNUM *a, const BIGNUM *b);
+void BN_free(BIGNUM *a);
+int BN_is_bit_set(const BIGNUM *a, int n);
+
+int BN_div(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m, const BIGNUM *d,
+           BN_CTX *ctx);
+# define BN_mod(rem,m,d,ctx) BN_div(NULL,(rem),(m),(d),(ctx))
 int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx);
 int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
                BN_CTX *ctx);
@@ -65,6 +144,19 @@ int BN_mod_exp_mont_consttime_x2(BIGNUM *rr1, const BIGNUM *a1, const BIGNUM *p1
                                  const BIGNUM *m2, BN_MONT_CTX *in_mont2,
                                  BN_CTX *ctx);
 
+BN_MONT_CTX *BN_MONT_CTX_new(void);
+int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                          BN_MONT_CTX *mont, BN_CTX *ctx);
+int BN_to_montgomery(BIGNUM *r, const BIGNUM *a, BN_MONT_CTX *mont,
+                     BN_CTX *ctx);
+int BN_from_montgomery(BIGNUM *r, const BIGNUM *a, BN_MONT_CTX *mont,
+                       BN_CTX *ctx);
+void BN_MONT_CTX_free(BN_MONT_CTX *mont);
+int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx);
+BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, BN_MONT_CTX *from);
+BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_RWLOCK *lock,
+                                    const BIGNUM *mod, BN_CTX *ctx);
+
 BN_RECP_CTX *BN_RECP_CTX_new(void);
 void BN_RECP_CTX_free(BN_RECP_CTX *recp);
 int BN_RECP_CTX_set(BN_RECP_CTX *recp, const BIGNUM *rdiv, BN_CTX *ctx);
@@ -77,16 +169,30 @@ int BN_div_recp(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m,
 
 
 // include/crypto/bn.h
+int bn_mul_mont_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                          BN_MONT_CTX *mont, BN_CTX *ctx);
+int bn_to_mont_fixed_top(BIGNUM *r, const BIGNUM *a, BN_MONT_CTX *mont,
+                         BN_CTX *ctx);
+int bn_from_mont_fixed_top(BIGNUM *r, const BIGNUM *a, BN_MONT_CTX *mont,
+                           BN_CTX *ctx);
+int bn_mod_add_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m);
+int bn_mod_sub_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m);
 int bn_mul_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 int bn_sqr_fixed_top(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 
 
 // bn_local.h
-// with SIXTY_FOUR_BIT_LONG
+// XXX: with SIXTY_FOUR_BIT_LONG
 #define BN_MASK2        (0xffffffffffffffffL)
-// with !BN_DEBUG
-#define bn_check_top(a)
+// XXX: with !BN_DEBUG
 #define BN_FLG_FIXED_TOP 0
+#define bn_pollute(a)
+#define bn_check_top(a)
+#define bn_fix_top(a)           bn_correct_top(a)
+#define bn_check_size(bn, bits)
+#define bn_wcheck_size(bn, words)
 
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w);
@@ -107,6 +213,7 @@ struct bignum_st {
     int neg;                    /* one if the number is negative */
     int flags;
 };
+
 /* Used for montgomery multiplication */
 struct bn_mont_ctx_st {
     int ri;                     /* number of bits in R */
@@ -132,6 +239,28 @@ struct bn_recp_ctx_st {
     int shift;
     int flags;
 };
+
+# define MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH      ( 64 )
+# define MOD_EXP_CTIME_MIN_CACHE_LINE_MASK       (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - 1)
+
+/*
+ * Window sizes optimized for fixed window size modular exponentiation
+ * algorithm (BN_mod_exp_mont_consttime). To achieve the security goals of
+ * BN_mode_exp_mont_consttime, the maximum size of the window must not exceed
+ * log_2(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH). Window size thresholds are
+ * defined for cache line sizes of 32 and 64, cache line sizes where
+ * log_2(32)=5 and log_2(64)=6 respectively. A window size of 7 should only be
+ * used on processors that have a 128 byte or greater cache line size.
+ */
+# if MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH == 64
+
+#  define BN_window_bits_for_ctime_exponent_size(b) \
+                ((b) > 937 ? 6 : \
+                 (b) > 306 ? 5 : \
+                 (b) >  89 ? 4 : \
+                 (b) >  22 ? 3 : 1)
+#  define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE    (6)
+# endif
 
 # define BN_window_bits_for_exponent_size(b) \
                 ((b) > 671 ? 6 : \
@@ -168,155 +297,8 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
 
-// bn_ctx.c
-/* How many bignums are in each "pool item"; */
-#define BN_CTX_POOL_SIZE 16
-/* A bundle of bignums that can be linked with other bundles */
-typedef struct bignum_pool_item {
-    /* The bignum values */
-    BIGNUM vals[BN_CTX_POOL_SIZE];
-    /* Linked-list admin */
-    struct bignum_pool_item *prev, *next;
-} BN_POOL_ITEM;
-/* A linked-list of bignums grouped in bundles */
-typedef struct bignum_pool {
-    /* Linked-list admin */
-    BN_POOL_ITEM *head, *current, *tail;
-    /* Stack depth and allocation size */
-    unsigned used, size;
-} BN_POOL;
-
-/* A wrapper to manage the "stack frames" */
-typedef struct bignum_ctx_stack {
-    /* Array of indexes into the bignum stack */
-    unsigned int *indexes;
-    /* Number of stack frames, and the size of the allocated array */
-    unsigned int depth, size;
-} BN_STACK;
-
-/* The opaque BN_CTX type */
-struct bignum_ctx {
-    /* The bignum bundles */
-    BN_POOL pool;
-    /* The "stack frames", if you will */
-    BN_STACK stack;
-    /* The number of bignums currently assigned */
-    unsigned int used;
-    /* Depth of stack overflow */
-    int err_stack;
-    /* Block "gets" until an "end" (compatibility behaviour) */
-    int too_many;
-    /* Flags. */
-    int flags;
-    /* The library context */
-    OSSL_LIB_CTX *libctx;
-};
-
-BN_CTX *BN_CTX_new(void);
-
-// defintions are in bn_ctx.c
-void BN_CTX_start(BN_CTX *ctx);
-BIGNUM *BN_CTX_get(BN_CTX *ctx);
-void BN_CTX_end(BN_CTX *ctx);
-
 // defintions are in bn_lib.c
-BIGNUM *BN_copy(BIGNUM *a, const BIGNUM *b);
-int BN_num_bits(const BIGNUM *a);
-int BN_abs_is_word(const BIGNUM *a, const BN_ULONG w);
-int BN_is_zero(const BIGNUM *a);
-int BN_is_one(const BIGNUM *a);
-int BN_is_word(const BIGNUM *a, const BN_ULONG w);
-int BN_is_odd(const BIGNUM *a);
-int BN_is_bit_set(const BIGNUM *a, int n);
-void bn_correct_top(BIGNUM *a);
-BIGNUM *bn_wexpand(BIGNUM *a, int words);
-
-
-// bn_lib.c
-//static BN_ULONG *bn_expand_internal(const BIGNUM *b, int words)
-//{
-//    BN_ULONG *a = NULL;
-//
-//    if (words > (INT_MAX / (4 * BN_BITS2))) {
-//        ERR_raise(ERR_LIB_BN, BN_R_BIGNUM_TOO_LONG);
-//        return NULL;
-//    }
-//    if (BN_get_flags(b, BN_FLG_STATIC_DATA)) {
-//        ERR_raise(ERR_LIB_BN, BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
-//        return NULL;
-//    }
-//    if (BN_get_flags(b, BN_FLG_SECURE))
-//        a = OPENSSL_secure_zalloc(words * sizeof(*a));
-//    else
-//        a = OPENSSL_zalloc(words * sizeof(*a));
-//    if (a == NULL) {
-//        ERR_raise(ERR_LIB_BN, ERR_R_MALLOC_FAILURE);
-//        return NULL;
-//    }
-//
-//    assert(b->top <= words);
-//    if (b->top > 0)
-//        memcpy(a, b->d, sizeof(*a) * b->top);
-//
-//    return a;
-//}
-//BIGNUM *bn_expand2(BIGNUM *b, int words)
-//{
-//    if (words > b->dmax) {
-//        BN_ULONG *a = bn_expand_internal(b, words);
-//        if (!a)
-//            return NULL;
-//        if (b->d != NULL)
-//            bn_free_d(b, 1);
-//        b->d = a;
-//        b->dmax = words;
-//    }
-//
-//    return b;
-//}
-//int BN_is_bit_set(const BIGNUM *a, int n)
-//{
-//    int i, j;
-//
-//    bn_check_top(a);
-//    if (n < 0)
-//        return 0;
-//    i = n / BN_BITS2;
-//    j = n % BN_BITS2;
-//    if (a->top <= i)
-//        return 0;
-//    return (int)(((a->d[i]) >> j) & ((BN_ULONG)1));
-//}
-//int BN_is_odd(const BIGNUM *a)
-//{
-//    return (a->top > 0) && (a->d[0] & 1);
-//}
-int BN_get_flags(const BIGNUM *b, int n)
-{
-    return b->flags & n;
-}
-//BIGNUM *bn_wexpand(BIGNUM *a, int words)
-//{
-//    return (words <= a->dmax) ? a : bn_expand2(a, words);
-//}
-//void bn_correct_top(BIGNUM *a)
-//{
-//    BN_ULONG *ftl;
-//    int tmp_top = a->top;
-//
-//    if (tmp_top > 0) {
-//        for (ftl = &(a->d[tmp_top]); tmp_top > 0; tmp_top--) {
-//            ftl--;
-//            if (*ftl != 0)
-//                break;
-//        }
-//        a->top = tmp_top;
-//    }
-//    if (a->top == 0)
-//        a->neg = 0;
-//    a->flags &= ~BN_FLG_FIXED_TOP;
-//    bn_pollute(a);
-//}
+static void bn_free_d(BIGNUM *a, int clear);
 
 
 // include/openssl/macros.h
@@ -344,8 +326,25 @@ int BN_get_flags(const BIGNUM *b, int n)
 # define ERR_RFLAG_COMMON               (0x2 << ERR_RFLAGS_OFFSET)
 
 # define ERR_LIB_BN              3
+
 # define ERR_R_FATAL                             (ERR_RFLAG_FATAL|ERR_RFLAG_COMMON)
+# define ERR_R_MALLOC_FAILURE                    (256|ERR_R_FATAL)
 # define ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED       (257|ERR_R_FATAL)
+# define ERR_R_PASSED_NULL_PARAMETER             (258|ERR_R_FATAL)
+# define ERR_R_INTERNAL_ERROR                    (259|ERR_R_FATAL)
+# define ERR_R_DISABLED                          (260|ERR_R_FATAL)
+# define ERR_R_INIT_FAIL                         (261|ERR_R_FATAL)
+# define ERR_R_PASSED_INVALID_ARGUMENT           (262|ERR_RFLAG_COMMON)
+# define ERR_R_OPERATION_FAIL                    (263|ERR_R_FATAL)
+# define ERR_R_INVALID_PROVIDER_FUNCTIONS        (264|ERR_R_FATAL)
+# define ERR_R_INTERRUPTED_OR_CANCELLED          (265|ERR_RFLAG_COMMON)
+# define ERR_R_NESTED_ASN1_ERROR                 (266|ERR_RFLAG_COMMON)
+# define ERR_R_MISSING_ASN1_EOS                  (267|ERR_RFLAG_COMMON)
+# define ERR_R_UNSUPPORTED                       (268|ERR_RFLAG_COMMON)
+# define ERR_R_FETCH_FAILED                      (269|ERR_RFLAG_COMMON)
+# define ERR_R_INVALID_PROPERTY_DEFINITION       (270|ERR_RFLAG_COMMON)
+# define ERR_R_UNABLE_TO_GET_READ_LOCK           (271|ERR_R_FATAL)
+# define ERR_R_UNABLE_TO_GET_WRITE_LOCK          (272|ERR_R_FATAL)
 void ERR_new(void);
 void ERR_set_debug(const char *file, int line, const char *func);
 void ERR_set_error(int lib, int reason, const char *fmt, ...);
@@ -354,3 +353,49 @@ void ERR_set_error(int lib, int reason, const char *fmt, ...);
     (ERR_new(),                                                 \
      ERR_set_debug(OPENSSL_FILE,OPENSSL_LINE,OPENSSL_FUNC),     \
      ERR_set_error)
+
+
+// include/openssl/bnerr.h
+# define BN_R_ARG2_LT_ARG3                                100
+# define BN_R_BAD_RECIPROCAL                              101
+# define BN_R_BIGNUM_TOO_LONG                             114
+# define BN_R_BITS_TOO_SMALL                              118
+# define BN_R_CALLED_WITH_EVEN_MODULUS                    102
+# define BN_R_DIV_BY_ZERO                                 103
+# define BN_R_ENCODING_ERROR                              104
+# define BN_R_EXPAND_ON_STATIC_BIGNUM_DATA                105
+# define BN_R_INPUT_NOT_REDUCED                           110
+# define BN_R_INVALID_LENGTH                              106
+# define BN_R_INVALID_RANGE                               115
+# define BN_R_INVALID_SHIFT                               119
+# define BN_R_NOT_A_SQUARE                                111
+# define BN_R_NOT_INITIALIZED                             107
+# define BN_R_NO_INVERSE                                  108
+# define BN_R_NO_SOLUTION                                 116
+# define BN_R_NO_SUITABLE_DIGEST                          120
+# define BN_R_PRIVATE_KEY_TOO_LARGE                       117
+# define BN_R_P_IS_NOT_PRIME                              112
+# define BN_R_TOO_MANY_ITERATIONS                         113
+# define BN_R_TOO_MANY_TEMPORARY_VARIABLES                109
+
+
+// include/internal/constant_time.h
+static ossl_inline unsigned int constant_time_eq_int(int a, int b);
+
+
+// include/openssl/trace.h
+// XXX: with OPENSSL_NO_TRACE
+#define OSSL_TRACE_BEGIN(category)           \
+  do {                                        \
+      BIO *trc_out = NULL;                    \
+      if (0)
+
+#define OSSL_TRACE_END(category)             \
+  } while(0)
+
+#define OSSL_TRACE_CANCEL(category)          \
+    ((void)0)
+
+
+// include/openssl/bio.h.in
+int BIO_printf(BIO *bio, const char *format, ...);
