@@ -8,16 +8,19 @@ int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
                         AES_KEY *key);
 
 #define ARRAY_SIZE (1024 * 1024 * 8 * AES_BLOCK_SIZE)
+//#define ARRAY_SIZE (8 * AES_BLOCK_SIZE)
 
 unsigned seed;
-unsigned char in[ARRAY_SIZE];
-unsigned char out[ARRAY_SIZE] = {0};
+//unsigned char in[ARRAY_SIZE];
+//unsigned char out[ARRAY_SIZE] = {0};
+unsigned char *in;
+unsigned char *out;
 unsigned char ivec[AES_BLOCK_SIZE];
 double tstart = 0.0;
 
 void init_seed(char** arg) {
   seed = strtoul(arg[1], NULL, 16);
-  printf("seed is: 0x%x\n", seed);
+  printf("seed: 0x%x\n", seed);
   srand(seed);
 }
 
@@ -27,12 +30,17 @@ size_t get_length() {
 
 unsigned char *init_array(bool is_in) {
   if (is_in) {
-    for (unsigned i = 0; i < ARRAY_SIZE; ++i) {
+    in = malloc(ARRAY_SIZE);
+    int *p = (int*) in;
+    for (unsigned i = 0; i < ARRAY_SIZE / sizeof(int); ++i) {
       // put "random" values into 'in'
-      in[i] = rand();
+      p[i] = rand();
     }
     return in;
-  } else { return out; }
+  } else {
+    out = calloc(1, ARRAY_SIZE);
+    return out;
+  }
 }
 
 unsigned char *init_ivec() {
@@ -50,10 +58,15 @@ unsigned char *init_ivec() {
 
 void init_key(AES_KEY *key) {
   unsigned char userKey[32];
-  for (unsigned i = 0; i < (sizeof(userKey) / sizeof(userKey[0])); ++i) {
+  for (unsigned i = 0; i < sizeof(userKey); ++i) {
     // put "random" values into 'userKey'
     userKey[i] = rand();
   }
+  printf("userKey: 0x%.2x", userKey[0]);
+  for (unsigned i = 1; i < sizeof(userKey); ++i) {
+    printf("%.2x", userKey[i]);
+  }
+  printf("\n");
   AES_set_encrypt_key(userKey, 256, key);
 }
 
