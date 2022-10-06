@@ -13,7 +13,16 @@ void init_seed(char** arg) {
   printf("seed: 0x%x\n", seed);
 }
 
-BIGNUM* init_bn(BIGNUM *bn);
+BN_CTX* init_ctx() {
+  // XXX: Is there more initialization to do?
+  return BN_CTX_new();
+}
+
+// TODO: use BN_CTX_get(ctx) and properly initialize the bignum
+// or: use BN_new() to get a bignum
+BIGNUM* init_bn(BN_CTX* ctx) {
+  return BN_CTX_get(ctx);
+}
 
 void nd_ulong(BN_ULONG *ul) {
   int *p = (int*) ul;

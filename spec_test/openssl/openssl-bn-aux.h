@@ -1,4 +1,5 @@
-BIGNUM* init_bn(BIGNUM*);
+BN_CTX* init_ctx();
+BIGNUM* init_bn(BN_CTX*);
 void nd_ulong(BN_ULONG*);
 int nd_int();
 
