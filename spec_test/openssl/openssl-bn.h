@@ -3,6 +3,7 @@
 
 // include/openssl/e_os2.h
 #define ossl_inline inline
+#  define ossl_noreturn _Noreturn
 
 // include/openssl/types.h
 typedef struct bio_st BIO;
@@ -18,9 +19,18 @@ typedef struct buf_mem_st BUF_MEM;
 // definition in context.c
 typedef struct ossl_lib_ctx_st OSSL_LIB_CTX;
 
+// include/openssl/e_os2.h
+#  define ossl_ssize_t ssize_t
+#  define __owur __attribute__((__warn_unused_result__))
 
 // include/openssl/crypto.h.in
 typedef void CRYPTO_RWLOCK;
+CRYPTO_RWLOCK *CRYPTO_THREAD_lock_new(void);
+__owur int CRYPTO_THREAD_read_lock(CRYPTO_RWLOCK *lock);
+__owur int CRYPTO_THREAD_write_lock(CRYPTO_RWLOCK *lock);
+int CRYPTO_THREAD_unlock(CRYPTO_RWLOCK *lock);
+void CRYPTO_THREAD_lock_free(CRYPTO_RWLOCK *lock);
+
 # define OPENSSL_free(addr) \
         CRYPTO_free(addr, OPENSSL_FILE, OPENSSL_LINE)
 
@@ -35,15 +45,27 @@ typedef void CRYPTO_RWLOCK;
 # define OPENSSL_secure_clear_free(addr, num) \
         CRYPTO_secure_clear_free(addr, num, OPENSSL_FILE, OPENSSL_LINE)
 typedef void *(*CRYPTO_malloc_fn)(size_t num, const char *file, int line);
+typedef void *(*CRYPTO_realloc_fn)(void *addr, size_t num, const char *file,
+                                   int line);
 typedef void (*CRYPTO_free_fn)(void *addr, const char *file, int line);
 void *CRYPTO_malloc(size_t num, const char *file, int line);
 void *CRYPTO_zalloc(size_t num, const char *file, int line);
 void CRYPTO_free(void *ptr, const char *file, int line);
 void CRYPTO_clear_free(void *ptr, size_t num, const char *file, int line);
+void *CRYPTO_realloc(void *addr, size_t num, const char *file, int line);
+
+int CRYPTO_secure_malloc_init(size_t sz, size_t minsize);
+int CRYPTO_secure_malloc_done(void);
+void *CRYPTO_secure_malloc(size_t num, const char *file, int line);
 void *CRYPTO_secure_zalloc(size_t num, const char *file, int line);
 void CRYPTO_secure_clear_free(void *ptr, size_t num,
                               const char *file, int line);
+int CRYPTO_secure_allocated(const void *ptr);
 void OPENSSL_cleanse(void *ptr, size_t len);
+
+ossl_noreturn void OPENSSL_die(const char *assertion, const char *file, int line);
+# define OPENSSL_assert(e) \
+    (void)((e) ? 0 : (OPENSSL_die("assertion failed: " #e, OPENSSL_FILE, OPENSSL_LINE), 1))
 
 
 // include/openssl/bn.h
@@ -112,6 +134,13 @@ BIGNUM *BN_secure_new(void);
 void BN_clear_free(BIGNUM *a);
 BIGNUM *BN_copy(BIGNUM *a, const BIGNUM *b);
 void BN_swap(BIGNUM *a, BIGNUM *b);
+
+int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
+int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 
 int BN_cmp(const BIGNUM *a, const BIGNUM *b);
 void BN_free(BIGNUM *a);
@@ -191,12 +220,28 @@ int bn_mod_sub_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m);
 int bn_mul_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 int bn_sqr_fixed_top(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
+int bn_lshift_fixed_top(BIGNUM *r, const BIGNUM *a, int n);
+int bn_rshift_fixed_top(BIGNUM *r, const BIGNUM *a, int n);
+int bn_div_fixed_top(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m,
+                     const BIGNUM *d, BN_CTX *ctx);
 
 
 // bn_local.h
-// XXX: with SIXTY_FOUR_BIT_LONG
-#define BN_MASK2        (0xffffffffffffffffL)
-// XXX: with !BN_DEBUG
+// with SIXTY_FOUR_BIT_LONG
+# ifdef SIXTY_FOUR_BIT_LONG
+#  define BN_ULLONG       unsigned long long
+#  define BN_BITS4        32
+#  define BN_MASK2        (0xffffffffffffffffL)
+#  define BN_MASK2l       (0xffffffffL)
+#  define BN_MASK2h       (0xffffffff00000000L)
+#  define BN_MASK2h1      (0xffffffff80000000L)
+#  define BN_DEC_CONV     (10000000000000000000UL)
+#  define BN_DEC_NUM      19
+#  define BN_DEC_FMT1     "%lu"
+#  define BN_DEC_FMT2     "%019lu"
+# endif
+
+// with !BN_DEBUG
 #define BN_FLG_FIXED_TOP 0
 #define bn_pollute(a)
 #define bn_check_top(a)
@@ -296,6 +341,81 @@ struct bn_gencb_st {
 # define BN_MUL_LOW_RECURSIVE_SIZE_NORMAL        (32)/* 32 */
 # define BN_MONT_CTX_SET_SIZE_WORD               (64)/* 32 */
 
+#  define LBITS(a)        ((a)&BN_MASK2l)
+#  define HBITS(a)        (((a)>>BN_BITS4)&BN_MASK2l)
+#  define L2HBITS(a)      (((a)<<BN_BITS4)&BN_MASK2)
+
+#  define LLBITS(a)       ((a)&BN_MASKl)
+#  define LHBITS(a)       (((a)>>BN_BITS2)&BN_MASKl)
+#  define LL2HBITS(a)     ((BN_ULLONG)((a)&BN_MASKl)<<BN_BITS2)
+
+#  define mul64(l,h,bl,bh) \
+        { \
+        BN_ULONG m,m1,lt,ht; \
+ \
+        lt=l; \
+        ht=h; \
+        m =(bh)*(lt); \
+        lt=(bl)*(lt); \
+        m1=(bl)*(ht); \
+        ht =(bh)*(ht); \
+        m=(m+m1)&BN_MASK2; if (m < m1) ht+=L2HBITS((BN_ULONG)1); \
+        ht+=HBITS(m); \
+        m1=L2HBITS(m); \
+        lt=(lt+m1)&BN_MASK2; if (lt < m1) ht++; \
+        (l)=lt; \
+        (h)=ht; \
+        }
+
+#  define sqr64(lo,ho,in) \
+        { \
+        BN_ULONG l,h,m; \
+ \
+        h=(in); \
+        l=LBITS(h); \
+        h=HBITS(h); \
+        m =(l)*(h); \
+        l*=l; \
+        h*=h; \
+        h+=(m&BN_MASK2h1)>>(BN_BITS4-1); \
+        m =(m&BN_MASK2l)<<(BN_BITS4+1); \
+        l=(l+m)&BN_MASK2; if (l < m) h++; \
+        (lo)=l; \
+        (ho)=h; \
+        }
+
+#  define mul_add(r,a,bl,bh,c) { \
+        BN_ULONG l,h; \
+ \
+        h= (a); \
+        l=LBITS(h); \
+        h=HBITS(h); \
+        mul64(l,h,(bl),(bh)); \
+ \
+        /* non-multiply part */ \
+        l=(l+(c))&BN_MASK2; if (l < (c)) h++; \
+        (c)=(r); \
+        l=(l+(c))&BN_MASK2; if (l < (c)) h++; \
+        (c)=h&BN_MASK2; \
+        (r)=l; \
+        }
+
+#  define mul(r,a,bl,bh,c) { \
+        BN_ULONG l,h; \
+ \
+        h= (a); \
+        l=LBITS(h); \
+        h=HBITS(h); \
+        mul64(l,h,(bl),(bh)); \
+ \
+        /* non-multiply part */ \
+        l+=(c); if ((l&BN_MASK2) < (c)) h++; \
+        (c)=h&BN_MASK2; \
+        (r)=l&BN_MASK2; \
+        }
+
+void BN_MONT_CTX_init(BN_MONT_CTX *ctx);
+
 void bn_init(BIGNUM *a);
 void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b, int nb);
 void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b);
@@ -317,6 +437,10 @@ BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                            int cl, int dl);
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
+
+BIGNUM *int_bn_mod_inverse(BIGNUM *in,
+                           const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx,
+                           int *noinv);
 
 static ossl_inline BIGNUM *bn_expand(BIGNUM *a, int bits)
 {
