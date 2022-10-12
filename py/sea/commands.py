@@ -1138,7 +1138,7 @@ class Seahorn(sea.LimitedCmd):
                          'placements', choices=['before-memory', 'after-branch', 'every-inst'],
                          default='before-memory', dest='fence_placement')
         ap.add_argument ('--fence-choice', help='Choice of the possible fences ' +
-                         'that eliminate a counterexample', choices=['late', 'early', 'opt'],
+                         'that eliminate a counterexample', choices=['all', 'late', 'early', 'opt'],
                          default='opt', dest='fence_choice')
         ap.add_argument ('--fence-hints', help='Give hints on where to place fences',
                          default='', dest='fence_hints')

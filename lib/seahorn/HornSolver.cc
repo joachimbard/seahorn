@@ -33,6 +33,7 @@ static llvm::cl::opt<bool>
                  cl::init(false));
 
 enum FenceChoiceOpt {
+  ALL,
   LATE,
   EARLY,
   OPT
@@ -42,9 +43,10 @@ static llvm::cl::opt<FenceChoiceOpt> FenceChoice(
     "fence-choice",
     llvm::cl::desc("Choice of the possible fences that eliminate a counterexample"),
     llvm::cl::values(
-        clEnumValN(LATE, "late", "Choose the last fence out of some list"),
-        clEnumValN(EARLY, "early", "Choose the first fence out of some list"),
-        clEnumValN(OPT, "opt", "Choose the fence according to some heuristic")
+        clEnumValN(ALL, "all", "Insert a fence at all possible positions (irrespective if there is a leak). Check that this fixes all potential leaks."),
+        clEnumValN(LATE, "late", "Choose the last fence out of some list."),
+        clEnumValN(EARLY, "early", "Choose the first fence out of some list."),
+        clEnumValN(OPT, "opt", "Choose the fence according to some heuristic.")
     ),
     llvm::cl::init(OPT));
 
@@ -149,6 +151,16 @@ bool HornSolver::runOnModule(Module &M) {
 
   errs() << "incremental cover: " << IncrementalCover << "\n";
   HornifyModule &hm = getAnalysis<HornifyModule>();
+  auto &db = hm.getHornClauseDB();
+
+  if (FenceChoice == FenceChoiceOpt::ALL) {
+    bool changed = true;
+    for (size_t i = 0; changed; ++i) {
+      std::string name = std::string("fence_") + std::to_string(i);
+      changed = insertFence(M, db, name);
+    }
+  }
+
   return runOnModule(M, hm, false);
 }
 
@@ -288,31 +300,7 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
           }
         }
 end_search:
-        char* nameEnd = &*name.end();
-        SpeculativeInfo::FenceType fenceId = std::strtoll(&name[6], &nameEnd, 10);
-        m_inserted_fences.push_back(fenceId);
-        outs() << "insert fence id " << fenceId << "\n";
-        Function *fence = M.getFunction(name);
-        if (fence) {
-          fence->print(outs());
-//          fence->deleteBody();
-//          fence->setLinkage(llvm::GlobalValue::InternalLinkage);
-          LLVMContext &ctx = M.getContext();
-          IRBuilder<> B(ctx);
-          for (BasicBlock &BB : *fence) {
-            for (Instruction &I : BB) {
-              if (ReturnInst *RI = dyn_cast<ReturnInst>(&I)) {
-                RI->setOperand(0, B.getTrue());
-              }
-            }
-          }
-//          BasicBlock *bb = BasicBlock::Create(ctx, "entry", fence);
-//          B.SetInsertPoint(bb);
-//          B.CreateRet(B.getTrue());
-          fence->print(outs());
-        } else { errs() << "could not insert fence " << name << " to module\n"; }
-        Expr rule;
-        bool changed = db.changeFenceRules(name, rule);
+        bool changed = insertFence(M, db, name);
         if (changed) {
           return runOnModule(M, hm, IncrementalCover);
         }
@@ -326,6 +314,37 @@ end_search:
     estimateSizeInvars(M);
 
   return false;
+}
+
+bool HornSolver::insertFence(Module &M, HornClauseDB &db, std::string &name) {
+  char* nameEnd = &*name.end();
+  SpeculativeInfo::FenceType fenceId = std::strtoll(&name[6], &nameEnd, 10);
+//  Function *fence = M.getFunction(name);
+//  if (fence) {
+//    fence->print(outs());
+//    //          fence->deleteBody();
+//    //          fence->setLinkage(llvm::GlobalValue::InternalLinkage);
+//    LLVMContext &ctx = M.getContext();
+//    IRBuilder<> B(ctx);
+//    for (BasicBlock &BB : *fence) {
+//      for (Instruction &I : BB) {
+//        if (ReturnInst *RI = dyn_cast<ReturnInst>(&I)) {
+//          RI->setOperand(0, B.getTrue());
+//        }
+//      }
+//    }
+//    //          BasicBlock *bb = BasicBlock::Create(ctx, "entry", fence);
+//    //          B.SetInsertPoint(bb);
+//    //          B.CreateRet(B.getTrue());
+//    fence->print(outs());
+//  } else { errs() << "could not insert fence " << name << " to module\n"; }
+  Expr rule;
+  bool changed = db.changeFenceRules(name, rule);
+  if (changed) {
+    m_inserted_fences.push_back(fenceId);
+    outs() << "insert fence id " << fenceId << "\n";
+  }
+  return changed;
 }
 
 void HornSolver::getAnalysisUsage(AnalysisUsage &AU) const {
