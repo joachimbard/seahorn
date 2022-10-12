@@ -172,7 +172,8 @@ raw_ostream &HornClauseDB::write(raw_ostream &o) const {
   return o;
 }
 
-bool HornClauseDB::changeFenceRules(std::string &name, Expr &newRule) {
+bool HornClauseDB::changeFenceRules(SpeculativeInfo::FenceType fenceId, Expr &newRule) {
+  std::string name = "fence_" + std::to_string(fenceId);
   for (HornRule &rule : m_rules) {
     Expr head = rule.head();
     Expr headDecl = bind::fname(head);

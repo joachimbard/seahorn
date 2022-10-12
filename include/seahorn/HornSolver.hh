@@ -23,11 +23,14 @@ class HornSolver : public llvm::ModulePass {
   bool runOnModule(Module &M, HornifyModule &hm, bool reuseCover);
 
   void printCex();
-//  bool insertFence(Module &M, HornClauseDB &db, SpeculativeInfo::FenceType id);
-  bool insertFence(Module &M, HornClauseDB &db, std::string &name);
-  void getFencesAlongTrace(std::vector<std::string> &fences);
-  std::string getFenceSimple();
-  std::string getFenceOpt();
+  bool insertFence(Module &M, HornClauseDB &db, SpeculativeInfo::FenceType id);
+  SpeculativeInfo::FenceType fenceNameToId(std::string &name) {
+    char* nameEnd = &*name.end();
+    return std::strtoll(&name[6], &nameEnd, 10);
+  }
+  void getFencesAlongTrace(std::vector<SpeculativeInfo::FenceType> &fences);
+  SpeculativeInfo::FenceType getFenceSimple();
+  SpeculativeInfo::FenceType getFenceOpt();
   void estimateSizeInvars(Module &M);
 
   void printInvars(Module &M, HornDbModel &model);

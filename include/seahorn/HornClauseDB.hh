@@ -13,6 +13,7 @@
 #include "seahorn/Expr/Expr.hh"
 #include "seahorn/Expr/ExprOpBinder.hh"
 #include "seahorn/Support/Stats.hh"
+#include "seahorn/SpeculativeInfo.hh"
 
 #include <algorithm>
 #include <map>
@@ -182,7 +183,7 @@ public:
     resetIndexes();
   }
 
-  bool changeFenceRules(std::string &name, Expr &newRule);
+  bool changeFenceRules(SpeculativeInfo::FenceType , Expr &newRule);
 
   const RuleVector &getRules() const { return m_rules; }
   RuleVector &getRules() { return m_rules; }

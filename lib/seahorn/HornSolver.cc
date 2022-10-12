@@ -50,7 +50,7 @@ static llvm::cl::opt<FenceChoiceOpt> FenceChoice(
     ),
     llvm::cl::init(OPT));
 
-static llvm::cl::list<std::string> FenceHints(
+static llvm::cl::list<seahorn::SpeculativeInfo::FenceType> FenceHints(
     "fence-hints",
     llvm::cl::desc("Give hints on where to place fences"),
     llvm::cl::CommaSeparated);
@@ -157,7 +157,7 @@ bool HornSolver::runOnModule(Module &M) {
     bool changed = true;
     for (size_t i = 0; changed; ++i) {
       std::string name = std::string("fence_") + std::to_string(i);
-      changed = insertFence(M, db, name);
+      changed = insertFence(M, db, fenceNameToId(name));
     }
   }
 
@@ -285,27 +285,23 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
 //    static int max_iters = 4;
 //    if (InsertFences && --max_iters >= 0) {
     if (InsertFences) {
-      std::string name = FenceChoice == OPT ? getFenceOpt() : getFenceSimple();
-      if (name != "") {
-        if (!FenceHints.empty()) {
-          std::vector<std::string> fences;
-          getFencesAlongTrace(fences);
-          for (std::string &fence : fences) {
-            for (std::string &hint : FenceHints) {
-              if (fence.compare(hint) == 0) {
-                name = fence;
-                goto end_search;
-              }
+      auto fenceId = FenceChoice == OPT ? getFenceOpt() : getFenceSimple();
+      if (!FenceHints.empty()) {
+        std::vector<SpeculativeInfo::FenceType> fences;
+        getFencesAlongTrace(fences);
+        for (auto fence : fences) {
+          for (auto hint : FenceHints) {
+            if (fence == hint) {
+              fenceId = fence;
+              goto end_search;
             }
           }
         }
+      }
 end_search:
-        bool changed = insertFence(M, db, name);
-        if (changed) {
-          return runOnModule(M, hm, IncrementalCover);
-        }
-      } else {
-        errs() << "Program not secure, but no fence found\n";
+      bool changed = insertFence(M, db, fenceId);
+      if (changed) {
+        return runOnModule(M, hm, IncrementalCover);
       }
     }
   }
@@ -316,9 +312,7 @@ end_search:
   return false;
 }
 
-bool HornSolver::insertFence(Module &M, HornClauseDB &db, std::string &name) {
-  char* nameEnd = &*name.end();
-  SpeculativeInfo::FenceType fenceId = std::strtoll(&name[6], &nameEnd, 10);
+bool HornSolver::insertFence(Module &M, HornClauseDB &db, SpeculativeInfo::FenceType fenceId) {
 //  Function *fence = M.getFunction(name);
 //  if (fence) {
 //    fence->print(outs());
@@ -339,7 +333,7 @@ bool HornSolver::insertFence(Module &M, HornClauseDB &db, std::string &name) {
 //    fence->print(outs());
 //  } else { errs() << "could not insert fence " << name << " to module\n"; }
   Expr rule;
-  bool changed = db.changeFenceRules(name, rule);
+  bool changed = db.changeFenceRules(fenceId, rule);
   if (changed) {
     m_inserted_fences.push_back(fenceId);
     outs() << "insert fence id " << fenceId << "\n";
@@ -405,7 +399,7 @@ void HornSolver::printCex() {
   }
 }
 
-void HornSolver::getFencesAlongTrace(std::vector<std::string> &fences) {
+void HornSolver::getFencesAlongTrace(std::vector<SpeculativeInfo::FenceType> &fences) {
   ZFixedPoint<EZ3> fp = *m_fp;
   ExprVector rules;
   fp.getCexRules(rules);
@@ -419,7 +413,7 @@ void HornSolver::getFencesAlongTrace(std::vector<std::string> &fences) {
     size_t atEntry = name.find("@entry");
     if (noFence || atEntry == std::string::npos) { continue; }
     name.erase(atEntry);
-    fences.push_back(name);
+    fences.push_back(fenceNameToId(name));
     outs() << name << ',';
   }
   outs() << '\n';
@@ -446,11 +440,12 @@ void HornSolver::getFencesAlongTrace(std::vector<std::string> &fences) {
 //   outs().flush();
 // }
 
-std::string HornSolver::getFenceSimple() {
+SpeculativeInfo::FenceType HornSolver::getFenceSimple() {
   ExprVector rules;
   m_fp->getCexRules(rules);
   ExprVector::const_iterator rulesI = rules.cbegin(), rulesE = rules.cend();
-  std::string fenceName = "";
+  SpeculativeInfo::FenceType fenceId = -1;
+  bool fenceFound = false;
   for (; rulesI != rulesE; ++rulesI) {
     Expr r = *rulesI;
     if (isOpX<IMPL>(r)) { continue; }
@@ -461,18 +456,19 @@ std::string HornSolver::getFenceSimple() {
     size_t atEntry = name.find("@entry");
     if (noFence || atEntry == std::string::npos) { continue; }
     name.erase(atEntry);
-    if (FenceChoice == EARLY) { return name; }
-    fenceName = name;
+    fenceId = fenceNameToId(name);
+    fenceFound = true;
+    if (FenceChoice == EARLY) { return fenceId; }
   }
-  if (fenceName == "") { errs() << "no fence found\n"; }
-  return fenceName;
+  if (!fenceFound) { errs() << "no fence found\n"; }
+  return fenceId;
 }
 
-std::string HornSolver::getFenceOpt() {
+SpeculativeInfo::FenceType HornSolver::getFenceOpt() {
   ZFixedPoint<EZ3> fp = *m_fp;
   ExprVector rules;
   fp.getCexRules(rules);
-  std::string fenceName;
+  SpeculativeInfo::FenceType fenceId = -1;
   ExprVector::const_iterator fenceI = rules.cbegin(), fenceE = rules.cend();
   bool noFenceFound = true;
   for (ExprVector::const_iterator rulesI = rules.cbegin(), rulesE = rules.cend();
@@ -482,14 +478,14 @@ std::string HornSolver::getFenceOpt() {
     if (!isOpX<IMPL>(r)) { continue; }
     Expr body = r->arg(0);
     Expr expr;
-    std::set<std::string> fences;
+    std::set<SpeculativeInfo::FenceType> fences;
     if (isOpX<AND>(body)) {
       for (auto argsI = body->args_begin(), argsE = body->args_end(); argsI != argsE;
            ++argsI) {
         expr = bind::fname(bind::fname(*argsI));
         std::string name = boost::lexical_cast<std::string>(*expr);
         int noFence = name.compare(0, 6, "fence_");
-        if (!noFence) { fences.insert(name); }
+        if (!noFence) { fences.insert(fenceNameToId(name)); }
       }
       if (fences.empty()) { continue; }
     } else {
@@ -497,7 +493,7 @@ std::string HornSolver::getFenceOpt() {
       expr = bind::fname(bind::fname(body));
       std::string name = boost::lexical_cast<std::string>(*expr);
       int noFence = name.compare(0, 6, "fence_");
-      if (!noFence) { fences.insert(name); }
+      if (!noFence) { fences.insert(fenceNameToId(name)); }
       else continue;
     }
     // search for the rules corresponding to fences
@@ -550,9 +546,9 @@ std::string HornSolver::getFenceOpt() {
               outs() << "update to " << name << "\n";
             }
             noFenceFound = false;
-            fenceName = name;
+            fenceId = fenceNameToId(name);
           }
-          fences.erase(name);
+          fences.erase(fenceNameToId(name));
         }
       }
     }
@@ -560,14 +556,14 @@ std::string HornSolver::getFenceOpt() {
       if (!fences.empty()) {
         WARN << "possible fences not found:";
         std::string str = "  ";
-        for (std::string name : fences) { str.append(name); }
+        for (auto id : fences) { str.append(std::to_string(id)); }
         WARN << str;
       }
-      return fenceName;
+      return fenceId;
     }
   }
   errs() << "no fence found\n";
-  return "";
+  return -1;
 }
 
 void HornSolver::estimateSizeInvars(Module &M) {
