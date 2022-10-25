@@ -1,19 +1,23 @@
 import sys
+import os
 import subprocess
 
 timecmd = "/usr/bin/time"
 timeout = 30 # seconds
 
 def get_seeds():
-    result = [];
+    seeds = [];
     seed_file = open("seeds.txt", "r")
     for line in seed_file:
         if line.startswith("0x"):
             seed = line[:-1] # remove '\n'
-            result.append(seed)
-    return result
+            seeds.append(seed)
+    return seeds
 
 def run_single(testcase, seeds):
+    if not os.access(testcase, os.X_OK):
+        exit("file {} does not exist or is not executable".format(testcase))
+
     runtime = 0.0
     clock_diff = 0.0
     for seed in seeds:
@@ -34,12 +38,12 @@ def run_single(testcase, seeds):
             if line.startswith("clock diff:"):
                 clock_diff += float(line[len("clock diff:"):])
 
-    print("overall runtime by {}: {}".format(testcase, runtime))
-    print("overall clock diff by {}: {}".format(testcase, clock_diff))
+    print("overall runtime of {}: {:.2f}".format(testcase, runtime))
+    print("overall clock diff of {}: {:.2f}".format(testcase, clock_diff / 1000))
 
 if (len(sys.argv) < 2):
     sys.exit("Script expects testfile as argument")
 
 seeds = get_seeds()
-print("seeds: {}".format(seeds))
+print("seeds:", seeds)
 run_single(sys.argv[1], seeds)
