@@ -50,6 +50,8 @@ namespace seahorn
     size_t m_numOfSpec;
     SpeculativeInfo::FenceType m_numOfFences;
 
+    raw_ostream& m_originalModuleOutput;
+
     Value* createNdBoolean (IRBuilder<>& B);
     unsigned getId (const Instruction *n);
 
@@ -93,10 +95,11 @@ namespace seahorn
 
     static char ID;
 
-    Speculative (bool repair = false, bool dump = false) :
+    Speculative (raw_ostream &originalModuleOutput = outs(), bool repair = false, bool dump = false) :
         llvm::ModulePass (ID),
 	m_dump(dump),
         m_repair(repair),
+        m_originalModuleOutput(originalModuleOutput),
 	m_assumeFn(nullptr),
 	m_assertFn(nullptr),
 	m_ndBoolFn(nullptr),

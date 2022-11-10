@@ -246,6 +246,7 @@ int main(int argc, char **argv) {
   std::unique_ptr<llvm::Module> module;
   std::unique_ptr<llvm::ToolOutputFile> output;
   std::unique_ptr<llvm::ToolOutputFile> asmOutput;
+  std::unique_ptr<llvm::ToolOutputFile> originalModuleOutput;
   std::unique_ptr<llvm::ToolOutputFile> repairedAsmOutput;
 
   module = llvm::parseIRFile(InputFilename, err, context);
@@ -272,17 +273,36 @@ int main(int argc, char **argv) {
     return 3;
   }
 
-  if (!RepairedAsmOutputFilename.empty())
+  if (!RepairedAsmOutputFilename.empty()) {
     repairedAsmOutput = std::make_unique<llvm::ToolOutputFile>(
         RepairedAsmOutputFilename.c_str(), error_code, llvm::sys::fs::F_Text);
-  if (error_code) {
-    if (llvm::errs().has_colors())
-      llvm::errs().changeColor(llvm::raw_ostream::RED);
-    llvm::errs() << "error: Could not open " << RepairedAsmOutputFilename << ": "
-                 << error_code.message() << "\n";
-    if (llvm::errs().has_colors())
-      llvm::errs().resetColor();
-    return 3;
+    if (error_code) {
+      if (llvm::errs().has_colors())
+        llvm::errs().changeColor(llvm::raw_ostream::RED);
+      llvm::errs() << "error: Could not open " << RepairedAsmOutputFilename << ": "
+                   << error_code.message() << "\n";
+      if (llvm::errs().has_colors())
+        llvm::errs().resetColor();
+      return 3;
+    }
+    size_t pos = RepairedAsmOutputFilename.find("fixed");
+    if (pos == std::string::npos) {
+      llvm::errs() << "error: " << RepairedAsmOutputFilename << " does not contain 'fixed'!\n";
+      return 3;
+    }
+    std::string OriginalModuleOutputFilename(RepairedAsmOutputFilename, 0, pos);
+    OriginalModuleOutputFilename.append("original.txt");
+    originalModuleOutput = std::make_unique<llvm::ToolOutputFile>(
+        OriginalModuleOutputFilename.c_str(), error_code, llvm::sys::fs::F_Text);
+    if (error_code) {
+      if (llvm::errs().has_colors())
+        llvm::errs().changeColor(llvm::raw_ostream::RED);
+      llvm::errs() << "error: Could not open " << OriginalModuleOutputFilename << ": "
+                   << error_code.message() << "\n";
+      if (llvm::errs().has_colors())
+        llvm::errs().resetColor();
+      return 3;
+    }
   }
 
   if (!OutputFilename.empty())
@@ -355,10 +375,10 @@ int main(int argc, char **argv) {
     pass_manager.add(seahorn::createStaticTaintPass(true));
   }
   if (Speculative) {
-    // Remember the module before speculation is added
+    // Todo: Should we unify function exit nodes?
     pass_manager.add(seahorn::createSpeculativeInfoWrapperPass());
     bool repair = !RepairedAsmOutputFilename.empty();
-    pass_manager.add(seahorn::createSpeculativeExe(repair));
+    pass_manager.add(seahorn::createSpeculativeExe(repair, originalModuleOutput->os()));
     outs() << "Speculative execution added to pass manager\n";
   }
 

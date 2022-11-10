@@ -111,7 +111,7 @@ llvm::Pass *createCHAPass();
 llvm::ModulePass *createDebugVerifierPass(int instanceID, llvm::StringRef name);
 llvm::Pass *createUnifyAssumesPass();
 llvm::Pass *createSpeculativeInfoWrapperPass();
-llvm::Pass *createSpeculativeExe(bool repair);
+llvm::Pass *createSpeculativeExe(bool repair, llvm::raw_ostream &originalModuleOutput);
 llvm::Pass *createStripSpeculativeExe();
 llvm::Pass *createRepairSpectre(llvm::StringRef originalModuleFilename, llvm::raw_ostream &repairOutput);
 llvm::Pass *createStaticTaintPass(bool bPrint);

@@ -25,9 +25,9 @@ static llvm::cl::opt<seahorn::FencePlaceOpt> FencePlacement(
     "fence-placement",
     llvm::cl::desc("Location of the possible fence placements"),
     llvm::cl::values(
-        clEnumValN(seahorn::FencePlaceOpt::BEFORE_MEMORY, "before-memory", "Insert fences directly before memory operations"),
-        clEnumValN(seahorn::FencePlaceOpt::AFTER_BRANCH, "after-branch", "Insert fences directly after branches"),
-        clEnumValN(seahorn::FencePlaceOpt::EVERY_INST, "every-inst", "Insert fences before every instruction")
+        clEnumValN(seahorn::FencePlaceOpt::BEFORE_MEMORY, "before-memory", "Insert fences directly before memory operations."),
+        clEnumValN(seahorn::FencePlaceOpt::AFTER_BRANCH, "after-branch", "Insert fences directly after branches."),
+        clEnumValN(seahorn::FencePlaceOpt::EVERY_INST, "every-inst", "Insert fences before every instruction.")
     ),
     llvm::cl::init(seahorn::FencePlaceOpt::BEFORE_MEMORY));
 
@@ -396,6 +396,7 @@ bool Speculative::runOnModule(llvm::Module &M) {
     SpeculativeInfo& specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
     specInfo.setFencePlacement(FencePlacement);
     specInfo.setOriginalModule(M);
+    M.print(m_originalModuleOutput, nullptr);
   }
 
   LLVMContext &ctx = M.getContext();
@@ -645,7 +646,9 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 } // namespace seahorn
 
 namespace seahorn {
-llvm::Pass *createSpeculativeExe(bool repair) { return new Speculative(repair, true); }
+llvm::Pass *createSpeculativeExe(bool repair, llvm::raw_ostream &originalModuleOutput) {
+  return new Speculative(originalModuleOutput, repair, true);
+}
 } // namespace seahorn
 
 static llvm::RegisterPass<seahorn::Speculative> X("speculative-exe",
