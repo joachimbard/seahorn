@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 timecmd = "/usr/bin/time"
-timeout = 30 # minutes
+timeout = 2*60 # minutes
 #delim = " & "
 #tmpdir = "tmp"
 #texfilename = "table.tex"
@@ -11,6 +11,7 @@ iterations = 1
 
 runtime_prefix = "runtime: "
 maxRSS_prefix = "maxRSS: "
+swapped_prefix = "swapped out: "
 
 def run_single_test(file):
     print("run oo7 on", file)
@@ -22,7 +23,7 @@ def run_single_test(file):
 #    cmd = [timecmd, "-f", "{}%U + %S =? %e\n{}%M".format(runtime_prefix, maxRSS_prefix),
 #           'bash -c "(bap {} --recipe=check && python2 ~/PhD/oo7/tool/incidents_profile.py incidents {}.asm)"'.format(file, file)
 #          ]
-    cmd = '{0} -f "{1}%U + %S =? %e\n{2}%M" bash -c "(bap {3} --recipe=check && python2 ~/PhD/oo7/tool/incidents_profile.py incidents {3}.asm)"'.format(timecmd, runtime_prefix, maxRSS_prefix, file)
+    cmd = '{0} -f "{2}%U + %S =? %e\n{3}%M\n{4}%W" bash -c "(bap {1} --recipe=check && python2 ~/PhD/oo7/tool/incidents_profile.py incidents {1}.asm)"'.format(timecmd, file, runtime_prefix, maxRSS_prefix, swapped_prefix)
 
     try:
 #        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
@@ -31,23 +32,26 @@ def run_single_test(file):
         print("Timeout ({}min) expired for {}!".format(timeout, file), file=sys.stderr)
         err_str = e.stderr.decode()
         print(err_str, file=sys.stderr)
-        # TODO kill all subprocesses
+        # kill all subprocesses
+        subprocess.run(["pkill", "bap"])
         return ("---$\dagger$", "---")
     except Exception as e:
         err_str = e.stderr
         print(err_str, file=sys.stderr)
         raise e
 
-    subprocess.run(["mv incidents incidents-{}.txt".format(file)], check=True, text=True)
-    subprocess.run(["mv incidents_profile.txt incidents_profile-{}.txt".format(file)], check=True, text=True)
+    subprocess.run("mv incidents incidents-{}.txt".format(file), shell=True, check=True, text=True)
+    subprocess.run("mv incidents_profile.txt incidents_profile-{}.txt".format(file), shell=True, check=True, text=True)
 
-    for line in p.stderr.splitlines():
-        if line.startswith(runtime_prefix):
-            runtime = line[len(runtime_prefix):]
-        if line.startswith(maxRSS_prefix):
-            maxRSS = line[len(maxRSS_prefix):]
+#    for line in p.stderr.splitlines():
+#        if line.startswith(runtime_prefix):
+#            runtime = line[len(runtime_prefix):]
+#        if line.startswith(maxRSS_prefix):
+#            maxRSS = line[len(maxRSS_prefix):]
+#
+#    return (runtime, maxRSS)
 
-    return (runtime, maxRSS)
+    return ("", "")
 
 
 if len(sys.argv) < 2:
