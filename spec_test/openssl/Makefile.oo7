@@ -1,0 +1,65 @@
+SHELL=/bin/bash
+
+#CC:=gcc
+CC:=clang-10
+CFLAGS:=-Wall -g -m32
+#OPTLVL:=-O0
+OPTLVL:=-O0
+
+AUXFILES:=$(sort $(wildcard *aux.c))
+#CFILES:=$(sort $(filter-out $(AUXFILES), $(wildcard *.c)))
+CFILES:=openssl-aes_cbc_encrypt_non-ct.c openssl-aes_cbc_encrypt_ct.c openssl-bn_exp.c openssl-bn_exp_old.c openssl-bn_mul.c openssl-bn_sqr.c openssl-bn_mod_exp.c
+SEAHORN_FILES:=$(sort $(wildcard seahorn/*.ll))
+OBJFILES:=$(addprefix oo7/, $(CFILES:.c=.o))
+EXECS:=$(addprefix oo7/, $(CFILES:.c=))
+SEAHORN_EXECS:=$(SEAHORN_FILES:seahorn/%.ll=oo7/%)
+AES_EXECS:=$(filter oo7/openssl-aes%, $(EXECS))
+BN_EXECS:=$(filter oo7/openssl-bn%, $(EXECS))
+ASMS:=$(EXECS:%=%.asm)
+ASMS+=$(SEAHORN_EXECS:%=%.asm)
+
+
+.PHONY: usage
+usage:
+	@echo Please provide a target.
+	@echo EXEXS: $(EXECS)
+	@echo AES_EXECS: $(AES_EXECS)
+	@echo ASMS: $(ASMS)
+
+oo7/%.o: %.c
+	$(CC) $(CFLAGS) $(OPTLVL) -c $< -o $@
+
+oo7/%.asm: oo7/%
+	objdump -S $^ > $@
+
+$(AES_EXECS): %: %.o oo7/openssl-aes-aux.o
+	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
+
+oo7/%_non-ct_seahorn: seahorn/%_non-ct_seahorn.ll oo7/openssl-aes-aux.o oo7/openssl-aes_non-ct_key.o
+	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
+
+oo7/%_ct_seahorn: seahorn/%_ct_seahorn.ll oo7/openssl-aes-aux.o oo7/openssl-aes_ct_key.o
+	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
+
+$(BN_EXECS): %: %.o oo7/openssl-bn-aux.o
+	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
+
+.PHONY: aes-exec
+aes-exec: $(AES_EXECS)
+
+.PHONY: bn-exec
+bn-exec: $(BN_EXECS)
+
+.PHONY: exec
+exec: $(EXECS)
+
+.PHONY: aes-asm
+aes-asm: $(filter oo7/openssl-aes%, $(ASMS))
+
+.PHONY: clean
+clean:
+	rm -f oo7/*.o
+	rm -f $(EXECS)
+	rm -f oo7/*.asm
+	rm -f oo7/incidents*
+	rm -rf oo7/log/
