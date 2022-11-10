@@ -17,15 +17,12 @@ FIXED_EXECS:=$(FIXED_LLFILES:.ll=)
 %.o: %.c
 	$(CC) $(CFLAGS) $(OPTLVL) -c $< -o $@
 
-%_non-ct_key.o: %_key.c
-	$(CC) $(CFLAGS) $(OPTLVL) -DOPENSSL_NO_AES_CONST_TIME -c $< -o $@
-
 $(AES_EXECS): %: %.ll openssl-aes-aux.o
 #	$(CC) $(CFLAGS) -O0 $^ -o $@
 	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
 
 $(BN_EXECS): %: %.o openssl-bn-aux.o
-	$(CC) $(CFLAGS) -O0 $^ -o $@
+	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
 
 #fixed/openssl-aes_encrypt_non-ct_%: fixed/openssl-aes_encrypt_non-ct_%.ll openssl-aes-aux.o
 #	$(CC) $(CFLAGS) -O0 -DNO_SET_KEY -DOPENSSL_NO_AES_CONST_TIME $^ -o $@
@@ -34,7 +31,7 @@ $(BN_EXECS): %: %.o openssl-bn-aux.o
 #	$(CC) $(CFLAGS) -O0 -DNO_SET_KEY $^ -o $@
 
 fixed/openssl-aes_cbc_encrypt_non-ct_%: fixed/openssl-aes_cbc_encrypt_non-ct_%.ll openssl-aes-aux.o openssl-aes_non-ct_key.o
-	$(CC) $(CFLAGS) -O0 $^ -o $@
+	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
 
 fixed/openssl-aes_cbc_encrypt_ct_%: fixed/openssl-aes_cbc_encrypt_ct_%.ll openssl-aes-aux.o openssl-aes_ct_key.o
 #	$(CC) $(CFLAGS) -O0 $^ -o $@
