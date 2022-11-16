@@ -420,8 +420,12 @@ static void ShiftRows(u64 *state)
     unsigned char *s0;
     int r;
 
+    r = 0;
+#ifdef OO7
+    r += get_taint_source();
+#endif
     s0 = (unsigned char *)state;
-    for (r = 0; r < 4; r++) {
+    for (; r < 4; r++) {
         s[0] = s0[0*4 + r];
         s[1] = s0[1*4 + r];
         s[2] = s0[2*4 + r];
@@ -458,7 +462,11 @@ static void MixColumns(u64 *state)
     uni s;
     int c;
 
-    for (c = 0; c < 2; c++) {
+    c = 0;
+#ifdef OO7
+    c += get_taint_source();
+#endif
+    for (; c < 2; c++) {
         s1.d = state[c];
         s.d = s1.d;
         s.d ^= ((s.d & U64(0xFFFF0000FFFF0000)) >> 16)
@@ -532,6 +540,9 @@ static void Cipher(const unsigned char *in, unsigned char *out,
 
     AddRoundKey(state, w);
 
+#ifdef OO7
+    nr += get_taint_source();
+#endif
     for (i = 1; i < nr; i++) {
         SubLong(&state[0]);
         SubLong(&state[1]);
@@ -1518,6 +1529,9 @@ void AES_encrypt(const unsigned char *in, unsigned char *out,
      * Nr - 1 full rounds:
      */
     r = key->rounds >> 1;
+#ifdef OO7
+    r += get_taint_source();
+#endif
     for (;;) {
         t0 =
             Te0[(s0 >> 24)       ] ^

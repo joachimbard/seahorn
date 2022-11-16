@@ -18,6 +18,13 @@ unsigned char *out;
 unsigned char ivec[AES_BLOCK_SIZE];
 double tstart = 0.0;
 
+#ifdef OO7
+__attribute__((noinline))
+int get_taint_source() {
+  return 0;
+}
+#endif
+
 void init_seed(char** arg) {
   seed = strtoul(arg[1], NULL, 16);
   printf("seed: 0x%x\n", seed);

@@ -32,7 +32,11 @@ int main(int argc, char **argv) {
   init_key(&key);
 
   start_clock();
-  AES_cbc_encrypt(in, out, len, &key, ivec, true);
+  int enc = true;
+#ifdef OO7
+  enc += get_taint_source();
+#endif
+  AES_cbc_encrypt(in, out, len, &key, ivec, enc);
   end_clock();
 
   // to avoid optimizations

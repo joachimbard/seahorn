@@ -2,7 +2,7 @@ SHELL=/bin/bash
 
 #CC:=gcc
 CC:=clang-10
-CFLAGS:=-Wall -g -m32
+CFLAGS:=-Wall -g -m32 -DOO7
 #OPTLVL:=-O0
 OPTLVL:=-O0
 
