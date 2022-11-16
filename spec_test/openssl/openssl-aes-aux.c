@@ -88,15 +88,16 @@ void end_clock() {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   double tend = 1000.0 * ts.tv_sec + 1e-6 * ts.tv_nsec;
   // diff in ms
-  fprintf(stderr, "clock diff: %.2f\n", tend - tstart);
+  fprintf(stderr, "clock diff: %.1f\n", tend - tstart);
 }
 
 void display_aes(unsigned char *out) {
-//  printf("encrypted: 0x%.2x", out[0]);
-//  for (unsigned i = 1; i < ARRAY_SIZE; ++i) {
-//    printf(" %.2x", out[i]);
-//  }
-//  printf("\n");
+  FILE *f = fopen("aes-output.txt", "a");
+  fprintf(f, "encrypted: 0x%.2x", out[0]);
+  for (unsigned i = 1; i < ARRAY_SIZE; ++i) {
+    fprintf(f, " %.2x", out[i]);
+  }
+  fprintf(f, "\n");
 }
 
 #ifdef NO_SET_KEY
