@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 
 CC:=clang-10
-CFLAGS:=-Wall -S -emit-llvm
+CFLAGS:=-Wall
 OPTLVL:=-O2
 
 .PHONY: usage
