@@ -9,17 +9,23 @@ choice = "opt"
 repair = True
 
 timecmd = "/usr/bin/time"
-timeout = 5 # minutes
+timeout = 4*60 # minutes
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
 #testdirs = ["Kocher"]
 testdirs = ["openssl"]
+#testdirs = ["hacl-star"]
 #testdirs = ["tmp/testdir"]
 #testdirs = ["Kocher", "openssl", "hacl-star"]
 iterations = 1
+#test_placements = ["before-memory"]
 test_placements = ["after-branch", "before-memory"]
 #placements = ["every-inst", "after-branch", "before-memory"]
+
+runtime_prefix = "runtime: "
+maxRSS_prefix = "maxRSS: "
+swapped_prefix = "swapped out: "
 
 def run_single_test(llfile, placement, choice):
     basename = os.path.basename(llfile[:-len(".ll")])
@@ -27,19 +33,26 @@ def run_single_test(llfile, placement, choice):
 
     print("run on", llfile, "with fences at", placement, "and", choice)
 
+    swap = subprocess.run(["swapon", "--show"], check=True, capture_output=True, text=True)
+    if swap.stdout != "":
+        print("\033[31mSwap enabled. Turn it off (sudo swapoff -va)!\033[0m", file=sys.stderr)
+
     repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
-    cmd = [timecmd, "-f", "runtime:%e",
-           "../build/run/bin/sea", "horn", "--solve",
-           "--dsa=sea-cs",
-           "-o={}.smt2".format(outfile),
-           "--oll={}.ll".format(outfile),
-           repairfile,
-           "--step={}".format(step), "--horn-answer",
-           "--horn-tail-simplifier-pve=false", "--horn-subsumption=false",
-           "--horn-inline-all",
-           "--speculative-exe",
-           "--insert-fences", "--fence-placement={}".format(placement),
-           "--fence-choice={}".format(choice)]
+    cmd = [timecmd, "-f", "{}%U + %S =? %e\n{}%M\n{}%W".format(runtime_prefix, maxRSS_prefix, swapped_prefix),
+            "../build/run/bin/sea", "horn", "--solve",
+            "--dsa=sea-cs",
+#            "--ztrace=spacer",
+#            "--bv-chc",
+            "-o={}.smt2".format(outfile),
+            "--oll={}.ll".format(outfile),
+            repairfile,
+            "--step={}".format(step), "--horn-answer",
+            "--horn-tail-simplifier-pve=false", "--horn-subsumption=false",
+            "--horn-inline-all",
+            "--speculative-exe",
+            "--insert-fences",
+            "--fence-placement={}".format(placement),
+            "--fence-choice={}".format(choice)]
 
     cmd.append("--horn-incremental-cover={}".format(incremental))
     cmd.append(llfile)
@@ -57,7 +70,14 @@ def run_single_test(llfile, placement, choice):
         print(err_str, file=open(outfile + ".err", "w"))
         # kill the seahorn subprocess
         subprocess.run(["pkill", "seahorn"])
-        return (-1, "---$\dagger$")
+        return (-1, "---$\dagger$", "---")
+    except Exception as e:
+        out_str = e.stdout
+        err_str = e.stderr
+        print(out_str, file=open(outfile + ".out", "w"))
+        print(err_str, file=sys.stderr)
+        print(err_str, file=open(outfile + ".err", "w"))
+        raise e
 
     print(p.stdout, file=open(outfile + ".out", "w"))
 
@@ -77,16 +97,18 @@ def run_single_test(llfile, placement, choice):
             break
 
     for line in p.stderr.splitlines():
-        if line.startswith("runtime:"):
-            runtime = line[len("runtime:"):]
+        if line.startswith(runtime_prefix):
+            runtime = line[len(runtime_prefix):]
+        if line.startswith(maxRSS_prefix):
+            maxRSS = line[len(maxRSS_prefix):]
         if line.startswith("Program not secure"):
             print("  " + line, file=sys.stderr)
-            return (-1, "---")
+            return (-1, "---", "---")
 
     if not secure:
         print("Program still not secure", file=sys.stderr)
-        return (-1, "---")
-    return (num_fences, runtime)
+        return (-1, "---", "---")
+    return (num_fences, runtime, maxRSS)
 
 
 if sys.argv[1] == "--all":
@@ -109,9 +131,10 @@ if sys.argv[1] == "--all":
             for i in range(iterations):
                 print(os.path.basename(test).replace("_", "\\_"), end="", file=texfile)
                 for placement in test_placements:
-                    (num_fences, runtime) = run_single_test(test, placement, choice)
+                    (num_fences, runtime, maxRSS) = run_single_test(test, placement, choice)
                     if num_fences < 0:
                         num_fences = "---"
+                    # TODO add maxRSS to table
                     print("", num_fences, runtime, sep=delim,
                             end="", file=texfile)
                 print("\\\\", file=texfile)
@@ -131,8 +154,8 @@ else:
 #        cmd.append(sys.argv[4])
 #        print("use in-place training")
 
-    (num_fences, runtime) = run_single_test(llfile, placement, choice)
+    (num_fences, runtime, maxRSS) = run_single_test(llfile, placement, choice)
     if num_fences < 0:
         print(llfile + ": an error occured!", file=sys.stderr)
     else:
-        print(llfile + ":", num_fences, "fences inserted, runtime:", runtime)
+        print(llfile + ":", num_fences, "fences inserted,", runtime_prefix + runtime + "s,", maxRSS_prefix + maxRSS + "KiB")
