@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <assert.h>
-#include "openssl.h"
-#include <seahorn/seahorn.h>
+#include "openssl-bn.h"
 
 extern void __taint(int);
 extern void __is_tainted(int);

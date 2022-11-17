@@ -1,7 +1,9 @@
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
 #include <pthread.h>
+#include <stdarg.h>
 
 //#define FIPS_MODULE
 #define USE_RWLOCK
