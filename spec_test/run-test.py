@@ -9,7 +9,7 @@ choice = "opt"
 repair = True
 
 timecmd = "/usr/bin/time"
-timeout = 4*60 # minutes
+timeout = 12*60 # minutes
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
