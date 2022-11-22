@@ -9,6 +9,8 @@
 
 #include "openssl-bn_impl.h"
 #include "openssl-bn_sqr_impl.h"
+#include "openssl-bn_mul_impl.h"
+#include "openssl-bn_mont_impl.h"
 
 int main() {
 //  BN_CTX *ctx = BN_CTX_new();
