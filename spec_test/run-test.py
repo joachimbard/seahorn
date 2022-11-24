@@ -136,14 +136,19 @@ def main():
                             runtime + "s,", maxRSS_prefix + maxRSS + "KiB")
 
     if args.server:
-        # copy generated files in tmp to JOBDATADIR
-        SLURM_JOB_ID = os.environ.get('SLURM_JOB_ID')
-        JOBTMPDIR = f'/tmp/job-{SLURM_JOB_ID}/'
+        # copy generated files in tmp to JOBTMPDIR
+#        SLURM_JOB_ID = os.environ.get('SLURM_JOB_ID')
+#        JOBTMPDIR = f'/tmp/job-{SLURM_JOB_ID}/'
+        JOBTMPDIR = '/tmp/'
         if not os.path.isdir(JOBTMPDIR):
             print(JOBTMPDIR, 'not a directory')
+        print('before:')
+        print(os.listdir(JOBTMPDIR))
         for file in glob.glob(tmpdir + '/*'):
             print('copy', file, 'to', JOBTMPDIR)
             shutil.copy(file, JOBTMPDIR)
+        print('after:')
+        print(os.listdir(JOBTMPDIR))
 
 
 if __name__ == '__main__':
