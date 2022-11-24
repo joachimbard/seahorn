@@ -2,10 +2,11 @@ import os
 import subprocess
 import sys
 import glob
+import shutil
+import argparse
 
 step = "large"
 incremental = "true"
-choice = "opt"
 repair = True
 
 timecmd = "/usr/bin/time"
@@ -13,15 +14,7 @@ timeout = 12*60 # minutes
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
-#testdirs = ["Kocher"]
-testdirs = ["openssl"]
-#testdirs = ["hacl-star"]
-#testdirs = ["tmp/testdir"]
-#testdirs = ["Kocher", "openssl", "hacl-star"]
 iterations = 1
-#test_placements = ["before-memory"]
-test_placements = ["after-branch", "before-memory"]
-#placements = ["every-inst", "after-branch", "before-memory"]
 
 runtime_prefix = "runtime: "
 maxRSS_prefix = "maxRSS: "
@@ -111,51 +104,75 @@ def run_single_test(llfile, placement, choice):
     return (num_fences, runtime, maxRSS)
 
 
-if sys.argv[1] == "--all":
-    texfile = open("{}/{}".format(tmpdir, texfilename), "w")
-    print("\\begin{tabular}{l", end="", file=texfile)
-    for _ in test_placements:
-        print("|cc", end="", file=texfile)
-    print("}\n\\toprule", file=texfile)
-    print("\\textbf{Benchmark}", end="", file=texfile)
-    for placement in test_placements:
-        print("", "\multicolumn{2}{c}{\\textbf{" + placement + "}}", sep=delim,
-                end="", file=texfile)
-    print("\\\\", file=texfile)
-    for _ in test_placements:
-        print("", "fences", "time", sep=delim, end="", file=texfile)
-    print("\\\\", file=texfile)
-    for d in testdirs:
-        print("\\midrule", file=texfile)
-        for test in sorted(glob.glob(d + "/*.ll")):
-            for i in range(iterations):
-                print(os.path.basename(test).replace("_", "\\_"), end="", file=texfile)
-                for placement in test_placements:
-                    (num_fences, runtime, maxRSS) = run_single_test(test, placement, choice)
-                    if num_fences < 0:
-                        num_fences = "---"
-                    # TODO add maxRSS to table
-                    print("", num_fences, runtime, sep=delim,
-                            end="", file=texfile)
-                print("\\\\", file=texfile)
-    print("\\bottomrule\n\\end{tabular}", file=texfile)
-else:
-    if len(sys.argv) < 4:
-        print(sys.argv[0])
-        sys.exit("Script expects testfile, fence placement, and fence choice as arguments")
-    llfile = sys.argv[1]
-    placement = sys.argv[2]
-    choice = sys.argv[3]
+def main():
+#    global parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', dest='server', default=False, action='store_true',
+            help='Should be set when running on the server to move the generated files to ' +
+            'permanent storage')
+    parser.add_argument('-d', '--dirs', dest='testdirs', nargs='*',
+            help='Analyze all benchmarks in the given directories')
+    parser.add_argument('benchmarks', nargs='*', help='Analyze these testcases')
+    parser.add_argument('-p', '--placement', dest='placements', nargs='+', required=True,
+            choices=['before-memory', 'after-branch', 'every-inst'], help='Location of possible ' +
+            'fences')
+    parser.add_argument('-c', '--choice', dest='choices', nargs = '+', required=True,
+            choices=['early', 'late', 'opt'], help='Strategy to choose fences')
+    args = parser.parse_args()
 
-    if not llfile.endswith(".ll"):
-        sys.exit("Input file must end with '.ll'")
+    if args.testdirs != None:
+        sys.exit(f'NOT IMPLEMENTD: Don\'t use neither "-d" nor "--dirs" ({args.testdirs})')
+    for benchmark in args.benchmarks:
+        if not benchmark.endswith('.ll'):
+            print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
+            continue
+        for placement in args.placements:
+            for choice in args.choices:
+                (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
+                if num_fences < 0:
+                    print(benchmark + ": an error occured!", file=sys.stderr)
+                else:
+                    print(benchmark + ":", num_fences, "fences inserted,", runtime_prefix +
+                            runtime + "s,", maxRSS_prefix + maxRSS + "KiB")
 
-#    if len(sys.argv) > 4 and sys.argv[4] == "--in-place-training":
-#        cmd.append(sys.argv[4])
-#        print("use in-place training")
+    if args.server:
+        # copy generated files in tmp to JOBDATADIR
+        JOBDATADIR = '/tmp/data/'
+        if not os.path.isdir(JOBDATADIR):
+            sys.exit(JOBDATADIR, 'not a directory')
+        for file in glob.glob(tmpdir + '/*'):
+            shutil.copy(file, JOBDATADIR)
 
-    (num_fences, runtime, maxRSS) = run_single_test(llfile, placement, choice)
-    if num_fences < 0:
-        print(llfile + ": an error occured!", file=sys.stderr)
-    else:
-        print(llfile + ":", num_fences, "fences inserted,", runtime_prefix + runtime + "s,", maxRSS_prefix + maxRSS + "KiB")
+
+if __name__ == '__main__':
+    main()
+
+
+#if sys.argv[1] == "--all":
+#    texfile = open("{}/{}".format(tmpdir, texfilename), "w")
+#    print("\\begin{tabular}{l", end="", file=texfile)
+#    for _ in test_placements:
+#        print("|cc", end="", file=texfile)
+#    print("}\n\\toprule", file=texfile)
+#    print("\\textbf{Benchmark}", end="", file=texfile)
+#    for placement in test_placements:
+#        print("", "\multicolumn{2}{c}{\\textbf{" + placement + "}}", sep=delim,
+#                end="", file=texfile)
+#    print("\\\\", file=texfile)
+#    for _ in test_placements:
+#        print("", "fences", "time", sep=delim, end="", file=texfile)
+#    print("\\\\", file=texfile)
+#    for d in testdirs:
+#        print("\\midrule", file=texfile)
+#        for test in sorted(glob.glob(d + "/*.ll")):
+#            for i in range(iterations):
+#                print(os.path.basename(test).replace("_", "\\_"), end="", file=texfile)
+#                for placement in test_placements:
+#                    (num_fences, runtime, maxRSS) = run_single_test(test, placement, choice)
+#                    if num_fences < 0:
+#                        num_fences = "---"
+#                    # TODO add maxRSS to table
+#                    print("", num_fences, runtime, sep=delim,
+#                            end="", file=texfile)
+#                print("\\\\", file=texfile)
+#    print("\\bottomrule\n\\end{tabular}", file=texfile)
