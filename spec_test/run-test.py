@@ -140,7 +140,7 @@ def main():
         SLURM_JOB_ID = os.environ.get('SLURM_JOB_ID')
         JOBTMPDIR = f'/tmp/job-{SLURM_JOB_ID}'
         for file in glob.glob(tmpdir + '/*'):
-            shutil.copy(file, JOBDATADIR)
+            shutil.copy(file, JOBTMPDIR)
 
 
 if __name__ == '__main__':
