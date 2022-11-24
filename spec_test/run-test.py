@@ -137,9 +137,8 @@ def main():
 
     if args.server:
         # copy generated files in tmp to JOBDATADIR
-        JOBDATADIR = '/tmp/data/'
-        if not os.path.isdir(JOBDATADIR):
-            sys.exit(JOBDATADIR, 'not a directory')
+        SLURM_JOB_ID = os.environ.get('SLURM_JOB_ID')
+        JOBTMPDIR = f'/tmp/job-{SLURM_JOB_ID}'
         for file in glob.glob(tmpdir + '/*'):
             shutil.copy(file, JOBDATADIR)
 
