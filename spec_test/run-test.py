@@ -139,7 +139,7 @@ def main():
         # copy generated files in tmp to JOBDATADIR
         SLURM_JOB_ID = os.environ.get('SLURM_JOB_ID')
         JOBTMPDIR = f'/tmp/job-{SLURM_JOB_ID}/'
-        if not os.isdir(JOBTMPDIR):
+        if not os.path.isdir(JOBTMPDIR):
             print(JOBTMPDIR, 'not a directory')
         for file in glob.glob(tmpdir + '/*'):
             print('copy', file, 'to', JOBTMPDIR)
