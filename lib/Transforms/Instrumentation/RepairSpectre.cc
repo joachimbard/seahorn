@@ -19,23 +19,8 @@ char RepairSpectre::ID = 0;
 bool RepairSpectre::runOnModule(Module& M) {
   SpeculativeInfo& specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
   Module& repairModule = specInfo.getOriginalModule();
-//  llvm::SMDiagnostic err;
-//  llvm::LLVMContext context;
-//  std::unique_ptr<Module> originalModule = llvm::parseIRFile(m_originalModuleFilename, err, context);
-//  if (!originalModule) {
-//    if (llvm::errs().has_colors())
-//      llvm::errs().changeColor(llvm::raw_ostream::RED);
-//    llvm::errs() << "error: "
-//                 << "Bitcode was not properly read; " << err.getMessage()
-//                 << "\n";
-//    if (llvm::errs().has_colors())
-//      llvm::errs().resetColor();
-//    return false;
-//  }
-//
-//  Module& repairModule = *originalModule;
-  outs() << "module before repair\n";
-  repairModule.print(outs(), nullptr);
+//  outs() << "module before repair\n";
+//  repairModule.print(outs(), nullptr);
 
   const DataLayout& DL = repairModule.getDataLayout();
   LLVMContext& ctx = repairModule.getContext();
@@ -51,8 +36,8 @@ bool RepairSpectre::runOnModule(Module& M) {
     changed |= runOnFunction(F, specInfo);
   }
   repairModule.print(m_repairOutput, nullptr);
-  outs() << "repaired code printed\n";
-  repairModule.print(outs(), nullptr);
+//  outs() << "repaired code printed\n";
+//  repairModule.print(outs(), nullptr);
   // Todo: check that all fences are inserted
   size_t fenceCount = specInfo.getFenceCount();
   if (m_insertedFencesNum != fenceCount) {

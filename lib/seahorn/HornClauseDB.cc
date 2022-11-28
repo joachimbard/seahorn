@@ -180,7 +180,7 @@ bool HornClauseDB::changeFenceRules(SpeculativeInfo::FenceType fenceId, Expr &ne
     std::string headName =
         boost::lexical_cast<std::string>(*bind::fname(headDecl));
     if (name.compare(headName) == 0 && !isOpX<TRUE>(rule.body())) {
-      outs() << "remove rule: " << *rule.get() << '\n';
+//      outs() << "remove rule: " << *rule.get() << '\n';
 //      outs() << "head args: ";
 //      for (auto it = head->args_begin(); it != head->args_end(); ++it) {
 //        outs() << **it << ", ";
@@ -204,7 +204,7 @@ bool HornClauseDB::changeFenceRules(SpeculativeInfo::FenceType fenceId, Expr &ne
 //        head->renew_args(args.begin(), args.end());
 //        newRule = head;
       newRule = bind::fapp(headDecl, args);
-      outs() << "add rule: " << *newRule << '\n';
+//      outs() << "add rule: " << *newRule << '\n';
 //      outs() << "new vars: ";
 //      for (Expr e : vars) {
 //        outs() << *e << ", ";

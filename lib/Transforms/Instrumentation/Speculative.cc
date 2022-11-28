@@ -455,7 +455,8 @@ bool Speculative::runOnModule(llvm::Module &M) {
     changed |= runOnFunction(*F);
   }
 
-  outs() << "-- Inserted " << m_numOfSpec << " speculations.\n";
+  outs() << "number of speculations: " << m_numOfSpec << "\nnumber of fences: "
+      << m_numOfFences << '\n';
   if (m_dump) {
     outs() << "Module after speculation was added:\n";
     M.print(outs(), nullptr);
@@ -589,7 +590,6 @@ void Speculative::emitBranchToTrap(Instruction *I, Value *Cmp) {
 void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 
   m_Builder->SetInsertPoint(&inst);
-  outs() << "Insertion point set...\n";
 
 //  BasicBlock *OldBB0 = inst.getParent();
 //  BasicBlock *Cont0 = OldBB0->splitBasicBlock(B.GetInsertPoint());
@@ -639,15 +639,13 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
 //  BasicBlock *Cont1 = OldBB1->splitBasicBlock(B.GetInsertPoint());
 //  OldBB1->getTerminator()->eraseFromParent();
 //  BranchInst::Create(Cont1, err_spec_bb, specCheck, OldBB1);
-
-  outs() << "Added A SPECULATION check...\n";
 }
 
 } // namespace seahorn
 
 namespace seahorn {
 llvm::Pass *createSpeculativeExe(bool repair, llvm::raw_ostream &originalModuleOutput) {
-  return new Speculative(originalModuleOutput, repair, true);
+  return new Speculative(originalModuleOutput, repair, false);
 }
 } // namespace seahorn
 

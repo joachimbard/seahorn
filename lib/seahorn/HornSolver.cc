@@ -279,7 +279,7 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
       specInfo.setFences(m_inserted_fences);
     }
   } else if (m_result) {
-    if (PrintAnswer) {
+    if (!InsertFences && PrintAnswer) {
       printCex();
     }
 //    static int max_iters = 4;
@@ -508,43 +508,12 @@ SpeculativeInfo::FenceType HornSolver::getFenceOpt() {
         if (!noFence) {
           if (atEntry != std::string::npos) {
             name = name.erase(atEntry);
-            if (noFenceFound) {
-              // first fence, no other to compare
-              outs() << "found: " << name << "\n";
-//              BasicBlock &curr = *m_fence2call.at(name).getParent();
-//              m_dm.recalculate(*curr.getParent());
-//              m_pdm.recalculate(*curr.getParent());
-            } else {
-//              BasicBlock *prev = m_fence2call.at(fenceName).getParent();
-//              BasicBlock *curr = m_fence2call.at(name).getParent();
-//              Function *currF = curr->getParent();
-//              Function *prevF = prev->getParent();
-//              if (prevF == currF) {
-//                if (m_dm.dominates(prev, curr)) {
-//                  if (prev == curr) { errs() << "equal basic blocks\n"; }
-//                  outs() << fenceName << " dominates " << name << "\n";
-//                } else {
-//                  errs() << fenceName << " does not dominate " << name << "\n";
-//                  outs() << fenceName << " does not dominate " << name << " (still update?)\n";
-//                  // fences.erase(name);
-//                  // continue;
-//                }
-//                if (m_pdm.dominates(curr, prev)) {
-//                  if (prev == curr) { errs() << "equal basic blocks\n"; }
-//                  outs() << name << " post-dominates " << fenceName << "\n";
-//                } else {
-//                  errs() << name << " does not post-dominate " << fenceName << "\n";
-//                  outs() << name << " does not post-dominate " << fenceName << " (still update?)\n";
-//                  // fences.erase(name);
-//                  // continue;
-//                }
-//              } else {
-//                errs() << "dominance not possible for different functions\n";
-//                errs() << "got " << fenceName << " in " << *prevF << " and ";
-//                errs() << name << " in " << *currF << "\n";
-//              }
-              outs() << "update to " << name << "\n";
-            }
+//            if (noFenceFound) {
+//              // first fence, no other to compare
+//              outs() << "found: " << name << "\n";
+//            } else {
+//              outs() << "update to " << name << "\n";
+//            }
             noFenceFound = false;
             fenceId = fenceNameToId(name);
           }
