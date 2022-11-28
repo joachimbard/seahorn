@@ -16,6 +16,7 @@ tmpdir = "tmp"
 texfilename = "table.tex"
 iterations = 1
 
+insert_fence_prefix = 'insert fence id '
 runtime_prefix = "runtime: "
 maxRSS_prefix = "maxRSS: "
 swapped_prefix = "swapped out: "
@@ -79,16 +80,17 @@ def run_single_test(llfile, placement, choice):
     print(p.stderr, file=open(outfile + ".err", "w"))
 
     secure = False
-    num_fences = 0
+    inserted_fences = list()
 
     for line in p.stdout.splitlines():
         if line.startswith('number of'):
             print('  ' + line)
-        if line.startswith("insert fence"):
-            print('    ' + line)
-            num_fences += 1
+        if line.startswith(insert_fence_prefix):
+#            print('    ' + line)
+            inserted_fences.append(int(line[len(insert_fence_prefix):]))
         if line == 'unsat':
             secure = True
+            print('  inserted fences:', inserted_fences)
             break
 
     for line in p.stderr.splitlines():
@@ -103,7 +105,7 @@ def run_single_test(llfile, placement, choice):
     if not secure:
         print("Program still not secure", file=sys.stderr)
         return (-1, "---", "---")
-    return (num_fences, runtime, maxRSS)
+    return (len(inserted_fences), runtime, maxRSS)
 
 
 def main():
