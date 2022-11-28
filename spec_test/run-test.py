@@ -82,10 +82,12 @@ def run_single_test(llfile, placement, choice):
     num_fences = 0
 
     for line in p.stdout.splitlines():
+        if line.startswith('number of'):
+            print('  ' + line)
         if line.startswith("insert fence"):
-            print("    " + line)
+            print('    ' + line)
             num_fences += 1
-        if line == "unsat":
+        if line == 'unsat':
             secure = True
             break
 
