@@ -17,8 +17,8 @@ texfilename = "table.tex"
 iterations = 1
 
 insert_fence_prefix = 'insert fence id '
-runtime_prefix = "runtime: "
-maxRSS_prefix = "maxRSS: "
+runtime_prefix = "runtime [s]: "
+maxRSS_prefix = "maxRSS [KiB]: "
 swapped_prefix = "swapped out: "
 
 def run_single_test(llfile, placement, choice):
@@ -45,11 +45,10 @@ def run_single_test(llfile, placement, choice):
             "--horn-inline-all",
             "--speculative-exe",
             "--insert-fences",
+            "--horn-incremental-cover={}".format(incremental),
             "--fence-placement={}".format(placement),
-            "--fence-choice={}".format(choice)]
-
-    cmd.append("--horn-incremental-cover={}".format(incremental))
-    cmd.append(llfile)
+            "--fence-choice={}".format(choice),
+            llfile]
 
     try:
         p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
@@ -82,22 +81,26 @@ def run_single_test(llfile, placement, choice):
     secure = False
     inserted_fences = list()
 
+    print(llfile, 'with fences at', placement, 'and', choice, 'choice:')
     for line in p.stdout.splitlines():
         if line.startswith('number of'):
             print('  ' + line)
+        if line.startswith('incremental cover:'):
+            print('  ' + line)
         if line.startswith(insert_fence_prefix):
-#            print('    ' + line)
             inserted_fences.append(int(line[len(insert_fence_prefix):]))
         if line == 'unsat':
             secure = True
-            print('  inserted fences:', inserted_fences)
+            print('  inserted fences ({}): {}'.format(len(inserted_fences), inserted_fences))
             break
 
     for line in p.stderr.splitlines():
         if line.startswith(runtime_prefix):
             runtime = line[len(runtime_prefix):]
+            print('  ' + line)
         if line.startswith(maxRSS_prefix):
             maxRSS = line[len(maxRSS_prefix):]
+            print('  ' + line)
         if line.startswith("Program not secure"):
             print("  " + line, file=sys.stderr)
             return (-1, "---", "---")
@@ -135,17 +138,14 @@ def main():
                 (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
                 if num_fences < 0:
                     print(benchmark + ": an error occured!", file=sys.stderr)
-                else:
-                    print(benchmark + ":", num_fences, "fences inserted,", runtime_prefix +
-                            runtime + "s,", maxRSS_prefix + maxRSS + "KiB")
 
     if args.server:
-        # copy generated files in tmp to JOBTMPDIR
-        JOBTMPDIR = '/tmp/'
-        if not os.path.isdir(JOBTMPDIR):
-            print(JOBTMPDIR, 'not a directory')
+        # copy generated files to location which is stored onto permanent storage
+        save_dir = '/tmp/'
+        if not os.path.isdir(save_dir):
+            print(save_dir, 'not a directory')
         for file in glob.glob(tmpdir + '/*'):
-            shutil.copy(file, JOBTMPDIR)
+            shutil.copy(file, save_dir)
 
 
 if __name__ == '__main__':
