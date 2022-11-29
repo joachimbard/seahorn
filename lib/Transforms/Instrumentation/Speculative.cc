@@ -455,8 +455,8 @@ bool Speculative::runOnModule(llvm::Module &M) {
     changed |= runOnFunction(*F);
   }
 
-  outs() << "number of speculations: " << m_numOfSpec << "\nnumber of fences: "
-      << m_numOfFences << '\n';
+  outs() << "number of speculations: " << m_numOfSpec
+         << "\nnumber of possible fences: " << m_numOfFences << '\n';
   if (m_dump) {
     outs() << "Module after speculation was added:\n";
     M.print(outs(), nullptr);

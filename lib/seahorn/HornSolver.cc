@@ -149,7 +149,7 @@ char HornSolver::ID = 0;
 bool HornSolver::runOnModule(Module &M) {
   Stats::sset("Result", "UNKNOWN");
 
-  errs() << "incremental cover: " << IncrementalCover << "\n";
+  outs() << "incremental cover: " << (IncrementalCover ? "true\n" : "false\n");
   HornifyModule &hm = getAnalysis<HornifyModule>();
   auto &db = hm.getHornClauseDB();
 
