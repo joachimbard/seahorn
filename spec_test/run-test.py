@@ -4,11 +4,13 @@ import sys
 import glob
 import shutil
 import argparse
+import time
 
 step = "large"
 incremental = "true"
 repair = True
 
+cooloff = 30 # seconds
 timecmd = "/usr/bin/time"
 timeout = 30*60 # minutes
 delim = " & "
@@ -135,12 +137,14 @@ def main():
             continue
         for placement in args.placements:
             for choice in args.choices:
+                time.sleep(cooloff)
                 (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
                 if num_fences < 0:
                     print(benchmark + ": an error occured!", file=sys.stderr)
 
     if args.server:
         # copy generated files to location which is stored onto permanent storage
+        # Note: make sure that externally (i.e. by another program) the directory is actually stored
         save_dir = '/tmp/'
         if not os.path.isdir(save_dir):
             print(save_dir, 'not a directory')
