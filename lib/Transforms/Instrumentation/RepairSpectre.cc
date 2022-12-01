@@ -63,7 +63,7 @@ bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
       if (isa<LoadInst>(I) || isa<StoreInst>(I)) {
         if (specInfo.isFenceID(m_fenceId)) {
           Worklist.push_back(I);
-          outs() << "inserting fence with id " << m_fenceId << "\n";
+//          outs() << "inserting fence with id " << m_fenceId << "\n";
         }
         ++m_fenceId;
       }
