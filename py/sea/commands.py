@@ -1128,12 +1128,12 @@ class Seahorn(sea.LimitedCmd):
         ap.add_argument ('--static-taint', help='Run static taint ' +
                          'analysis', default=False,
                          action='store_true', dest='static_taint')
-        ap.add_argument ('--speculative-exe', help='Create speculative execution ' +
-                         'semantics', default=False,
-                         action='store_true', dest='speculative_exe')
-        ap.add_argument ('--insert-fences', help='Insert fences to mitigate ' +
-                         'Spectre attacks', default=False,
-                         action='store_true', dest='insert_fences')
+        ap.add_argument ('--speculative-exe', help='Create speculative execution semantics',
+                         default=False, action='store_true', dest='speculative_exe')
+        ap.add_argument('--speculation-depth', help='Maximum depth of the speculative execution',
+                         default=500, dest='speculation_depth')
+        ap.add_argument ('--insert-fences', help='Insert fences to mitigate Spectre attacks',
+                         default=False, action='store_true', dest='insert_fences')
         ap.add_argument ('--fence-placement', help='Location of possible fence ' +
                          'placements', choices=['before-memory', 'after-branch', 'every-inst'],
                          default='before-memory', dest='fence_placement')
@@ -1216,7 +1216,8 @@ class Seahorn(sea.LimitedCmd):
             argv.append('--static-taint')
 
         if args.speculative_exe:
-            argv.append('--speculative-exe')
+            argv.extend(['--speculative-exe',
+                        '--speculation-depth={0}'.format(args.speculation_depth)])
 
         if args.insert_fences:
             argv.extend (['--insert-fences',

@@ -44,8 +44,8 @@ namespace seahorn
 //    std::map<std::string, CallInst&> m_fenceCallMap;
     Value * m_nd;
     Type * m_BoolTy;
-    GlobalVariable * m_SpecCount;
-    GlobalVariable * m_spec;
+    GlobalVariable * m_SpecCounter;
+//    GlobalVariable * m_spec;
 
     size_t m_numOfSpec;
     SpeculativeInfo::FenceType m_numOfFences;
@@ -56,7 +56,7 @@ namespace seahorn
     unsigned getId (const Instruction *n);
 
     void insertFenceFunction(Module* M, Value* globalSpec);
-    BasicBlock* addSpeculationBB(std::string name, Value *spec, BasicBlock* bb);
+    BasicBlock* addSpeculationBB(std::string name, Value *localSpec, BasicBlock* bb);
     bool insertSpeculation(BranchInst& inst);
 
     BasicBlock* createErrorBlock (Function &F);
@@ -84,8 +84,8 @@ namespace seahorn
 
     void splitSelectInst(Function &F, SelectInst *SI);
 
-    void initSpecCount(LoadInst & spec);
-    void incrementSpecCount(Instruction &inst);
+    void initSpecCounter(BranchInst &br);
+    void decrementSpecCounter(Module &M, int num);
 
 //    void addFenceCall(std::string name, CallInst &CI) {
 //      m_fenceCallMap.insert(std::pair<std::string, CallInst&>(name, CI));
