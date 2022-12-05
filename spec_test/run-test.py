@@ -12,7 +12,7 @@ repair = True
 
 cooloff = 30 # seconds
 timecmd = "/usr/bin/time"
-timeout = 30*60 # minutes
+timeout = 48*60 # minutes
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
@@ -137,7 +137,8 @@ def main():
             continue
         for placement in args.placements:
             for choice in args.choices:
-                time.sleep(cooloff)
+                if args.server:
+                    time.sleep(cooloff)
                 (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
                 if num_fences < 0:
                     print(benchmark + ": an error occured!", file=sys.stderr)
