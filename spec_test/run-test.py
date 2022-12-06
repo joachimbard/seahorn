@@ -8,6 +8,7 @@ import time
 
 step = "large"
 incremental = "true"
+speculation_depth = 100
 repair = True
 
 cooloff = 30 # seconds
@@ -46,6 +47,7 @@ def run_single_test(llfile, placement, choice):
             "--horn-tail-simplifier-pve=false", "--horn-subsumption=false",
             "--horn-inline-all",
             "--speculative-exe",
+            '--speculation-depth={}'.format(speculation_depth),
             "--insert-fences",
             "--horn-incremental-cover={}".format(incremental),
             "--fence-placement={}".format(placement),
