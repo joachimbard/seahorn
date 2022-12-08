@@ -13,7 +13,8 @@ repair = True
 
 cooloff = 30 # seconds
 timecmd = "/usr/bin/time"
-timeout = 48*60 # minutes
+timeout = 0
+
 delim = " & "
 tmpdir = "tmp"
 texfilename = "table.tex"
@@ -87,9 +88,8 @@ def run_single_test(llfile, placement, choice):
 
     print(llfile, 'with fences at', placement, 'and', choice, 'choice:')
     for line in p.stdout.splitlines():
-        if line.startswith('number of'):
-            print('  ' + line)
-        if line.startswith('incremental cover:'):
+        if line.startswith('speculation depth:') or line.startswith('number of') \
+                or line.startswith('incremental cover:'):
             print('  ' + line)
         if line.startswith(insert_fence_prefix):
             inserted_fences.append(int(line[len(insert_fence_prefix):]))
@@ -129,10 +129,18 @@ def main():
             'fences')
     parser.add_argument('-c', '--choice', dest='choices', nargs = '+', required=True,
             choices=['early', 'late', 'opt'], help='Strategy to choose fences')
+    parser.add_argument('-t', '--timeout', dest='timeout', type=int, required=True,
+            help='Set the time limit in minutes')
+    parser.add_argument('-s', '--speculation-depth', dest='speculation_depth', type=int,
+            required=True, help='Set the time limit in minutes')
     args = parser.parse_args()
 
     if args.testdirs != None:
         sys.exit(f'NOT IMPLEMENTD: Don\'t use neither "-d" nor "--dirs" ({args.testdirs})')
+    global timeout
+    global speculation_depth
+    timeout = args.timeout
+    speculation_depth = args.speculation_depth
     for benchmark in args.benchmarks:
         if not benchmark.endswith('.ll'):
             print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
