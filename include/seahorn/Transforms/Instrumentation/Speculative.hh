@@ -42,10 +42,10 @@ namespace seahorn
 
 //    std::map<BranchInst*, Value*> m_bb2spec;
 //    std::map<std::string, CallInst&> m_fenceCallMap;
-    Value * m_nd;
+//    Value * m_nd;
     Type * m_BoolTy;
     GlobalVariable * m_SpecCounter;
-//    GlobalVariable * m_spec;
+    GlobalVariable * m_globalSpec;
 
     size_t m_numOfSpec;
     SpeculativeInfo::FenceType m_numOfFences;
@@ -107,7 +107,7 @@ namespace seahorn
         m_CG (nullptr),
 //        m_bb2spec(),
 //        m_fenceCallMap(std::map<std::string, CallInst&>()),
-        m_nd(nullptr),
+//        m_nd(nullptr),
         m_BoolTy(nullptr),
         m_numOfSpec(0),
         m_numOfFences(0) { }
