@@ -57,8 +57,8 @@ def run_single_test(llfile, placement, choice):
         cmd.append('--bv-chc')
 
     try:
-        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
-#        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=False, text=True)
+#        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
+        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=False, text=True)
     except subprocess.TimeoutExpired as e:
         print("Timeout ({}min) expired for {}!".format(timeout, llfile), file=sys.stderr)
         print("Timeout ({}min) expired!".format(timeout), file=open(outfile + ".err", "w"))
