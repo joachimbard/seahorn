@@ -104,8 +104,8 @@ def run_single_test(llfile, placement, choice):
             runtime = line[len(runtime_prefix):]
             print('  ' + line)
         if line.startswith(maxRSS_prefix):
-            maxRSS = line[len(maxRSS_prefix):]
-            print('  ' + line)
+            maxRSS = float(line[len(maxRSS_prefix):]) / 1024.0
+            print('  maxRSS [MiB]:', '{:.2f}'.format(maxRSS))
         if line.startswith("Program not secure"):
             print("  " + line, file=sys.stderr)
             return (-1, "---", "---")
