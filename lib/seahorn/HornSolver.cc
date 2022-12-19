@@ -156,8 +156,7 @@ bool HornSolver::runOnModule(Module &M) {
   if (FenceChoice == FenceChoiceOpt::ALL) {
     bool changed = true;
     for (size_t i = 0; changed; ++i) {
-      std::string name = std::string("fence_") + std::to_string(i);
-      changed = insertFence(M, db, fenceNameToId(name));
+      changed = insertFence(M, db, i);
     }
   }
 
@@ -270,16 +269,19 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
 
   LOG("answer", if (m_result || !m_result) errs() << fp.getAnswer() << "\n";);
 
-  if (PrintAnswer && !m_result) {
-    HornDbModel dbModel;
-    initDBModelFromFP(dbModel, db, fp);
-    printInvars(M, dbModel);
+  if (!m_result) {
+    if (PrintAnswer) {
+      HornDbModel dbModel;
+      initDBModelFromFP(dbModel, db, fp);
+      printInvars(M, dbModel);
+    }
     if (InsertFences) {
       SpeculativeInfo &specInfo = getAnalysis<SpeculativeInfoWrapperPass>().getSpecInfo();
       specInfo.setFences(m_inserted_fences);
     }
   } else if (m_result) {
-    if (!InsertFences && PrintAnswer) {
+//    if (!InsertFences && PrintAnswer) {
+    if (PrintAnswer) {
       printCex();
     }
 //    static int max_iters = 4;

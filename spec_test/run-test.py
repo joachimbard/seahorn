@@ -33,14 +33,13 @@ def run_single_test(llfile, placement, choice):
 
     swap = subprocess.run(["swapon", "--show"], check=True, capture_output=True, text=True)
     if swap.stdout != "":
-        print("\033[31mSwap enabled. Turn it off (sudo swapoff -va)!\033[0m", file=sys.stderr)
+        print("Swap enabled.", file=sys.stderr)
 
     repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "{}%U + %S =? %e\n{}%M\n{}%W".format(runtime_prefix, maxRSS_prefix, swapped_prefix),
             "../build/run/bin/sea", "horn", "--solve",
-            "--dsa=sea-cs",
+#            "--dsa=sea-cs",
 #            "--ztrace=spacer",
-#            "--bv-chc",
             "-o={}.smt2".format(outfile),
             "--oll={}.ll".format(outfile),
             repairfile,
@@ -54,6 +53,8 @@ def run_single_test(llfile, placement, choice):
             "--fence-placement={}".format(placement),
             "--fence-choice={}".format(choice),
             llfile]
+    if speculation_depth > 0:
+        cmd.append('--bv-chc')
 
     try:
         p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
