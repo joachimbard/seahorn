@@ -10,6 +10,7 @@ step = "large"
 incremental = "true"
 speculation_depth = 100
 repair = True
+debug = False
 
 cooloff = 30 # seconds
 timecmd = "/usr/bin/time"
@@ -57,8 +58,7 @@ def run_single_test(llfile, placement, choice):
         cmd.append('--bv-chc')
 
     try:
-#        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=True, text=True)
-        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=False, text=True)
+        p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=not debug, text=True)
     except subprocess.TimeoutExpired as e:
         print("Timeout ({}min) expired for {}!".format(timeout, llfile), file=sys.stderr)
         print("Timeout ({}min) expired!".format(timeout), file=open(outfile + ".err", "w"))
@@ -77,6 +77,9 @@ def run_single_test(llfile, placement, choice):
         print(err_str, file=sys.stderr)
         print(err_str, file=open(outfile + ".err", "w"))
         raise e
+
+    if debug:
+        return (-1, 'Analysis of result is not possible due to debug mode. Check yourself!', '---')
 
     print(p.stdout, file=open(outfile + ".out", "w"))
 
@@ -122,6 +125,8 @@ def main():
     parser.add_argument('--server', dest='server', default=False, action='store_true',
             help='Should be set when running on the server to move the generated files to ' +
             'permanent storage')
+    parser.add_argument('--debug', dest='debug', default=False, action='store_true',
+            help='In debug mode stdout and stderr are not captured but instead just printed')
     parser.add_argument('-d', '--dirs', dest='testdirs', nargs='*',
             help='Analyze all benchmarks in the given directories')
     parser.add_argument('benchmarks', nargs='*', help='Analyze these testcases')
@@ -140,8 +145,10 @@ def main():
         sys.exit(f'NOT IMPLEMENTD: Don\'t use neither "-d" nor "--dirs" ({args.testdirs})')
     global timeout
     global speculation_depth
+    global debug
     timeout = args.timeout
     speculation_depth = args.speculation_depth
+    debug = args.debug
     for benchmark in args.benchmarks:
         if not benchmark.endswith('.ll'):
             print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
