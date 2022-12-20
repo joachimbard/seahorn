@@ -69,7 +69,7 @@ def run_single_test(llfile, placement, choice):
         print(err_str, file=open(outfile + ".err", "w"))
         # kill the seahorn subprocess
         subprocess.run(["pkill", "seahorn"])
-        return (-1, "---$\dagger$", "---")
+        return (-1, 'timeout', '---')
     except Exception as e:
         out_str = e.stdout
         err_str = e.stderr
@@ -109,13 +109,13 @@ def run_single_test(llfile, placement, choice):
         if line.startswith(maxRSS_prefix):
             maxRSS = float(line[len(maxRSS_prefix):]) / 1024.0
             print('  maxRSS [MiB]:', '{:.2f}'.format(maxRSS))
-        if line.startswith("Program not secure"):
+        if line.startswith('Program not secure'):
             print("  " + line, file=sys.stderr)
-            return (-1, "---", "---")
+            return (-1, 'program not secure', '---')
 
     if not secure:
-        print("Program still not secure", file=sys.stderr)
-        return (-1, "---", "---")
+        print('Program still not secure', file=sys.stderr)
+        return (-1, 'fences still missing', '---')
     return (len(inserted_fences), runtime, maxRSS)
 
 
@@ -159,7 +159,8 @@ def main():
                     time.sleep(cooloff)
                 (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
                 if num_fences < 0:
-                    print(benchmark + ": an error occured!", file=sys.stderr)
+                    print('the following error occured on', benchmark + ':', runtime,
+                            file=sys.stderr)
 
     if args.server:
         # copy generated files to location which is stored onto permanent storage
