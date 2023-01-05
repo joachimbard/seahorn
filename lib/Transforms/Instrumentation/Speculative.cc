@@ -86,17 +86,16 @@ BasicBlock *Speculative::addSpeculationBB(std::string name, Value *localSpec, Ba
     }
   } else {
     Value *specCount = m_Builder->CreateAlignedLoad(m_SpecCounter, 4);
-    globalSpec = m_Builder->CreateICmpSGT(specCount, ConstantInt::get(ctx, APInt(32, 0)));
+    globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
     Value *notGlobalSpec = m_Builder->CreateNot(globalSpec);
     Value *startSpec = m_Builder->CreateAnd(notGlobalSpec, localSpec);
     // NOTE: specCount >= 0
-    Value *mask = m_Builder->CreateSExtOrBitCast(startSpec, Type::getInt32Ty(ctx));
-    Value *increment = m_Builder->CreateAnd(mask, SpeculationDepth);
-    // TODO: test that the counter is incremented correctly
-    specCount = m_Builder->CreateAdd(specCount, increment);
+//    Value *mask = m_Builder->CreateSExtOrBitCast(startSpec, Type::getInt32Ty(ctx));
+//    specCount = m_Builder->CreateAdd(specCount, increment);
+    specCount = m_Builder->CreateSelect(startSpec, m_specDepth, specCount);
     m_Builder->CreateAlignedStore(specCount, m_SpecCounter, 4);
     if (FencePlacement == FencePlaceOpt::AFTER_BRANCH) {
-      globalSpec = m_Builder->CreateICmpSGT(specCount, ConstantInt::get(ctx, APInt(32, 0)));
+      globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
       insertFenceFunction(specBB->getModule(), globalSpec);
       m_Builder->SetInsertPoint(specBB);
     }
@@ -146,13 +145,14 @@ void Speculative::decrementSpecCounter(Module &M, int num) {
   LLVMContext &ctx = m_Builder->getContext();
   Value *specCount = m_Builder->CreateAlignedLoad(m_SpecCounter, 4);
   // only decrement if speculation counter > 0
-  Value *globalSpec = m_Builder->CreateICmpSGT(specCount, ConstantInt::get(ctx, APInt(32, 0)));
-  Value *mask = m_Builder->CreateSExtOrBitCast(globalSpec, Type::getInt32Ty(ctx));
-  Value *decrement = m_Builder->CreateAnd(mask, APInt(32, num));
+  Value *globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
+//  Value *mask = m_Builder->CreateSExtOrBitCast(globalSpec, m_Builder->getInt32Ty());
+//  Value *decrement = m_Builder->CreateAnd(mask, APInt(32, num));
+  Value *decrement = m_Builder->CreateSelect(globalSpec, ConstantInt::get(ctx, APInt(32, num)), m_zero);
   specCount = m_Builder->CreateSub(specCount, decrement);
   m_Builder->CreateAlignedStore(specCount, m_SpecCounter, 4);
   // assume counter >= 0
-  Value *countNonNegative = m_Builder->CreateICmpSGE(specCount, ConstantInt::get(ctx, APInt(32, 0)));
+  Value *countNonNegative = m_Builder->CreateICmpSGE(specCount, m_zero);
   Function *assumeFn = SBI->mkSeaBuiltinFn(seahorn::SeaBuiltinsOp::ASSUME, M);
   m_Builder->CreateCall(assumeFn, countNonNegative);
 }
@@ -254,7 +254,7 @@ bool Speculative::runOnBasicBlock(BasicBlock &BB) {
     } else {
       LLVMContext &ctx = m_Builder->getContext();
       Value *specCount = m_Builder->CreateAlignedLoad(m_SpecCounter, 4);
-      globalSpec = m_Builder->CreateICmpSGT(specCount, ConstantInt::get(ctx, APInt(32, 0)));
+      globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
     }
     auto I = BB.begin();
     if (SpeculationDepth <= 0) {
@@ -270,7 +270,7 @@ bool Speculative::runOnBasicBlock(BasicBlock &BB) {
   }
 
   Instruction *term = BB.getTerminator();
-  if (SpeculationDepth <= 0) {
+  if (SpeculationDepth > 0) {
     changed = true;
     size_t size = BB.size();
     m_Builder->SetInsertPoint(term);
@@ -346,7 +346,7 @@ bool Speculative::runOnFunction(Function &F) {
       globalSpec = m_Builder->CreateAlignedLoad(m_globalSpec, 1);
     } else {
       Value *specCount = m_Builder->CreateAlignedLoad(m_SpecCounter, 4);
-      globalSpec = m_Builder->CreateICmpSGT(specCount, ConstantInt::get(ctx, APInt(32, 0)));
+      globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
     }
     m_Builder->CreateCall(assumeNotFn, globalSpec, "");
   }
@@ -448,21 +448,24 @@ bool Speculative::runOnModule(llvm::Module &M) {
   LLVMContext &ctx = M.getContext();
 
   m_BoolTy = Type::getInt1Ty(ctx);
+  m_zero = ConstantInt::get(ctx, APInt(32, 0));
+  m_specDepth = ConstantInt::get(ctx, APInt(32, SpeculationDepth));
 
-
-  m_SpecCounter = new GlobalVariable(
-		  M,
-		  Type::getInt32Ty(ctx),
-		  false,
-		  GlobalValue::CommonLinkage,
-		  ConstantInt::get(ctx, APInt(32,0)),
-		  "__Spec_Counter__");
-  m_SpecCounter->setAlignment(4);
-
-  m_globalSpec = new GlobalVariable(M, m_BoolTy, false, GlobalValue::CommonLinkage,
-                                    ConstantInt::get(ctx, APInt(1, 0)),
-                                    "__global_spec__");
-  m_globalSpec->setAlignment(1);
+  if (SpeculationDepth <= 0) {
+    m_globalSpec = new GlobalVariable(M, m_BoolTy, false, GlobalValue::CommonLinkage,
+                                      ConstantInt::get(ctx, APInt(1, 0)),
+                                      "__global_spec__");
+    m_globalSpec->setAlignment(1);
+  } else {
+    m_SpecCounter = new GlobalVariable(
+        M,
+        Type::getInt32Ty(ctx),
+        false,
+        GlobalValue::CommonLinkage,
+        m_zero,
+        "__Spec_Counter__");
+    m_SpecCounter->setAlignment(4);
+  }
 
   if (HasErrorFunc) {
 
@@ -666,7 +669,7 @@ void Speculative::insertSpecCheck(Function &F, Instruction &inst) {
   } else {
     LLVMContext &ctx = m_Builder->getContext();
     Value *specCount = m_Builder->CreateAlignedLoad(m_SpecCounter, 4);
-    globalSpec = m_Builder->CreateICmpSGT(specCount, ConstantInt::get(ctx, APInt(32, 0)));
+    globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
   }
   if (FencePlacement == FencePlaceOpt::BEFORE_MEMORY) {
     insertFenceFunction(inst.getModule(), globalSpec);

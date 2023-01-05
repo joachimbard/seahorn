@@ -44,6 +44,8 @@ namespace seahorn
 //    std::map<std::string, CallInst&> m_fenceCallMap;
 //    Value * m_nd;
     Type * m_BoolTy;
+    ConstantInt * m_zero;
+    ConstantInt * m_specDepth;
     GlobalVariable * m_SpecCounter;
     GlobalVariable * m_globalSpec;
 
@@ -109,6 +111,8 @@ namespace seahorn
 //        m_fenceCallMap(std::map<std::string, CallInst&>()),
 //        m_nd(nullptr),
         m_BoolTy(nullptr),
+        m_zero(nullptr),
+        m_specDepth(nullptr),
         m_numOfSpec(0),
         m_numOfFences(0) { }
 
