@@ -54,8 +54,8 @@ def run_single_test(llfile, placement, choice):
             "--fence-placement={}".format(placement),
             "--fence-choice={}".format(choice),
             llfile]
-    if speculation_depth > 0:
-        cmd.append('--bv-chc')
+#    if speculation_depth > 0:
+#        cmd.append('--bv-chc')
 
     try:
         p = subprocess.run(cmd, timeout=60*timeout, check=True, capture_output=not debug, text=True)
