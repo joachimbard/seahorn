@@ -1,5 +1,6 @@
 #include "hacl-aux.h"
 
+#define HACL_CAN_COMPILE_INLINE_ASM 1
 // We include the implementation on purpose
 #include "Hacl_Curve25519_64.c"
 
