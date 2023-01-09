@@ -7,6 +7,10 @@
 int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
                         AES_KEY *key);
 
+// print results (big file)
+//#define PRINT
+char output_filename[] = "aes-output.txt";
+
 #define ARRAY_SIZE (1024 * 1024 * 8 * AES_BLOCK_SIZE)
 //#define ARRAY_SIZE (8 * AES_BLOCK_SIZE)
 
@@ -27,8 +31,10 @@ int get_taint_source() {
 
 void init_seed(char** arg) {
   seed = strtoul(arg[1], NULL, 16);
-  printf("seed: 0x%x\n", seed);
   srand(seed);
+#ifdef PRINT
+  printf("seed: 0x%x\n", seed);
+#endif
 }
 
 size_t get_length() {
@@ -55,11 +61,13 @@ unsigned char *init_ivec() {
     // put "random" values into 'ivec'
     ivec[i] = rand();
   }
+#ifdef PRINT
   printf("ivec: 0x%.2x", ivec[0]);
   for (unsigned i = 1; i < AES_BLOCK_SIZE; ++i) {
     printf("%.2x", ivec[i]);
   }
   printf("\n");
+#endif
   return ivec;
 }
 
@@ -69,12 +77,14 @@ void init_key(AES_KEY *key) {
     // put "random" values into 'userKey'
     userKey[i] = rand();
   }
+  AES_set_encrypt_key(userKey, 256, key);
+#ifdef PRINT
   printf("userKey: 0x%.2x", userKey[0]);
   for (unsigned i = 1; i < sizeof(userKey); ++i) {
     printf("%.2x", userKey[i]);
   }
   printf("\n");
-  AES_set_encrypt_key(userKey, 256, key);
+#endif
 }
 
 void start_clock() {
@@ -88,16 +98,19 @@ void end_clock() {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   double tend = 1000.0 * ts.tv_sec + 1e-6 * ts.tv_nsec;
   // diff in ms
-  fprintf(stderr, "clock diff: %.1f\n", tend - tstart);
+  fprintf(stderr, "  clock diff: %.1f\n", tend - tstart);
 }
 
 void display_aes(unsigned char *out) {
-  FILE *f = fopen("aes-output.txt", "a");
+#ifdef PRINT
+  FILE *f = fopen(output_filename, "a");
   fprintf(f, "encrypted: 0x%.2x", out[0]);
   for (unsigned i = 1; i < ARRAY_SIZE; ++i) {
     fprintf(f, " %.2x", out[i]);
   }
   fprintf(f, "\n");
+  fclose(f);
+#endif
 }
 
 #ifdef NO_SET_KEY
