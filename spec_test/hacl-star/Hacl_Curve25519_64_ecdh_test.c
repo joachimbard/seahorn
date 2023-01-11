@@ -6,11 +6,11 @@
 
 int main(int argc, char **argv) {
   init_seed(argv);
-  uint8_t out[32U];
+  uint8_t out[32U] = {0};
   uint8_t priv[32U];
   uint8_t pub[32U];
 
-  init(out);
+//  init(out);
   init(priv);
   init(pub);
 
