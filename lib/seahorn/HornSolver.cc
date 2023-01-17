@@ -149,6 +149,8 @@ char HornSolver::ID = 0;
 bool HornSolver::runOnModule(Module &M) {
   Stats::sset("Result", "UNKNOWN");
 
+  std::time_t timestamp = std::time(nullptr);
+  outs() << std::ctime(&timestamp);
   outs() << "incremental cover: " << (IncrementalCover ? "true\n" : "false\n");
   HornifyModule &hm = getAnalysis<HornifyModule>();
   auto &db = hm.getHornClauseDB();
@@ -311,6 +313,9 @@ end_search:
   if (EstimateSizeInvars)
     estimateSizeInvars(M);
 
+  std::time_t timestamp = std::time(nullptr);
+  outs() << "finish HornSolver: " << std::ctime(&timestamp);
+  outs().flush();
   return false;
 }
 
@@ -338,7 +343,11 @@ bool HornSolver::insertFence(Module &M, HornClauseDB &db, SpeculativeInfo::Fence
   bool changed = db.changeFenceRules(fenceId, rule);
   if (changed) {
     m_inserted_fences.push_back(fenceId);
+    std::time_t timestamp = std::time(nullptr);
+    outs() << std::ctime(&timestamp);
     outs() << "insert fence id " << fenceId << "\n";
+    outs() << m_inserted_fences.size() << " fences inserted in total\n";
+    outs().flush();
   }
   return changed;
 }
