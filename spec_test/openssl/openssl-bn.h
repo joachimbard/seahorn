@@ -92,6 +92,8 @@ void bn_correct_top(BIGNUM *a);
 void BN_set_flags(BIGNUM *b, int n);
 int BN_get_flags(const BIGNUM *b, int n);
 
+void BN_with_flags(BIGNUM *dest, const BIGNUM *b, int flags);
+
 # define BN_num_bytes(a) ((BN_num_bits(a)+7)/8)
 
 int BN_abs_is_word(const BIGNUM *a, const BN_ULONG w);
@@ -134,7 +136,15 @@ BIGNUM *BN_secure_new(void);
 void BN_clear_free(BIGNUM *a);
 BIGNUM *BN_copy(BIGNUM *a, const BIGNUM *b);
 void BN_swap(BIGNUM *a, BIGNUM *b);
-
+BIGNUM *BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret);
+int BN_bn2bin(const BIGNUM *a, unsigned char *to);
+int BN_bn2binpad(const BIGNUM *a, unsigned char *to, int tolen);
+BIGNUM *BN_lebin2bn(const unsigned char *s, int len, BIGNUM *ret);
+int BN_bn2lebinpad(const BIGNUM *a, unsigned char *to, int tolen);
+BIGNUM *BN_native2bn(const unsigned char *s, int len, BIGNUM *ret);
+int BN_bn2nativepad(const BIGNUM *a, unsigned char *to, int tolen);
+BIGNUM *BN_mpi2bn(const unsigned char *s, int len, BIGNUM *ret);
+int BN_bn2mpi(const BIGNUM *a, unsigned char *to);
 int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
@@ -195,6 +205,36 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx);
 BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, BN_MONT_CTX *from);
 BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_RWLOCK *lock,
                                     const BIGNUM *mod, BN_CTX *ctx);
+
+/* BN_BLINDING flags */
+# define BN_BLINDING_NO_UPDATE   0x00000001
+# define BN_BLINDING_NO_RECREATE 0x00000002
+
+BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod);
+void BN_BLINDING_free(BN_BLINDING *b);
+int BN_BLINDING_update(BN_BLINDING *b, BN_CTX *ctx);
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx);
+int BN_BLINDING_invert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx);
+int BN_BLINDING_convert_ex(BIGNUM *n, BIGNUM *r, BN_BLINDING *b, BN_CTX *);
+int BN_BLINDING_invert_ex(BIGNUM *n, const BIGNUM *r, BN_BLINDING *b,
+                          BN_CTX *);
+
+int BN_BLINDING_is_current_thread(BN_BLINDING *b);
+void BN_BLINDING_set_current_thread(BN_BLINDING *b);
+int BN_BLINDING_lock(BN_BLINDING *b);
+int BN_BLINDING_unlock(BN_BLINDING *b);
+
+unsigned long BN_BLINDING_get_flags(const BN_BLINDING *);
+void BN_BLINDING_set_flags(BN_BLINDING *, unsigned long);
+BN_BLINDING *BN_BLINDING_create_param(BN_BLINDING *b,
+                                      const BIGNUM *e, BIGNUM *m, BN_CTX *ctx,
+                                      int (*bn_mod_exp) (BIGNUM *r,
+                                                         const BIGNUM *a,
+                                                         const BIGNUM *p,
+                                                         const BIGNUM *m,
+                                                         BN_CTX *ctx,
+                                                         BN_MONT_CTX *m_ctx),
+                                      BN_MONT_CTX *m_ctx);
 
 BN_RECP_CTX *BN_RECP_CTX_new(void);
 void BN_RECP_CTX_free(BN_RECP_CTX *recp);

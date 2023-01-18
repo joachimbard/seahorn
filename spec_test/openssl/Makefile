@@ -2,7 +2,7 @@ include ../Makefile.common
 
 AUXFILES:=$(sort $(wildcard *aux.c))
 #CFILES:=$(sort $(filter-out $(AUXFILES), $(wildcard *.c)))
-CFILES:=openssl-aes_encrypt_non-ct.c openssl-aes_encrypt_ct.c openssl-aes_cbc_encrypt_non-ct.c openssl-aes_cbc_encrypt_ct.c openssl-bn_exp.c openssl-bn_exp_old.c openssl-bn_mul.c openssl-bn_mul_no-sec_no-err.c openssl-bn_mul_no-ctx_no-err.c openssl-bn_sqr.c openssl-bn_mod_exp.c #openssl-rsa_ossl_private_encrypt.c
+CFILES:=openssl-aes_encrypt_non-ct.c openssl-aes_encrypt_ct.c openssl-aes_cbc_encrypt_non-ct.c openssl-aes_cbc_encrypt_ct.c openssl-bn_exp.c openssl-bn_exp_old.c openssl-bn_mul.c openssl-bn_mul_no-sec_no-err.c openssl-bn_mul_no-ctx_no-err.c openssl-bn_sqr.c openssl-bn_mod_exp.c openssl-rsa_ossl_private_encrypt.c
 LLFILES:=$(CFILES:.c=.ll)
 OBJFILES:=$(CFILES:.c=.o)
 EXECS:=$(LLFILES:.ll=)
