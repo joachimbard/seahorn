@@ -1,5 +1,9 @@
-#include <stddef.h>
-#include "openssl-rsa-all.h"
+#include "openssl-rsa.h"
+
+#include "openssl-bn_impl.h"
+#include "openssl-bn_mul_impl.h"
+#include "openssl-bn_sqr_impl.h"
+#include "openssl-bn_mont_impl.h"
 
 #include "openssl-rsa_ossl_private_encrypt_impl.h"
 
