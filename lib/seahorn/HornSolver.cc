@@ -152,6 +152,7 @@ bool HornSolver::runOnModule(Module &M) {
   std::time_t timestamp = std::time(nullptr);
   outs() << std::ctime(&timestamp);
   outs() << "incremental cover: " << (IncrementalCover ? "true\n" : "false\n");
+  outs().flush();
   HornifyModule &hm = getAnalysis<HornifyModule>();
   auto &db = hm.getHornClauseDB();
 
