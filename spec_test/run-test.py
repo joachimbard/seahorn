@@ -11,15 +11,15 @@ incremental = "true"
 speculation_depth = 100
 repair = True
 debug = False
+default_iterations = 1
 
 cooloff = 30 # seconds
 timecmd = "/usr/bin/time"
 timeout = 0
 
-delim = " & "
-tmpdir = "tmp"
-texfilename = "table.tex"
-iterations = 1
+delim = ','
+tmpdir = 'tmp'
+table_filename = 'table.csv'
 
 insert_fence_prefix = 'insert fence id '
 runtime_prefix = "runtime [s]: "
@@ -104,7 +104,7 @@ def run_single_test(llfile, placement, choice):
 
     for line in p.stderr.splitlines():
         if line.startswith(runtime_prefix):
-            runtime = line[len(runtime_prefix):]
+            runtime = line.split()[-1]
             print('  ' + line)
         if line.startswith(maxRSS_prefix):
             maxRSS = float(line[len(maxRSS_prefix):]) / 1024.0
@@ -119,6 +119,16 @@ def run_single_test(llfile, placement, choice):
     return (len(inserted_fences), runtime, maxRSS)
 
 
+def print_table_header(table, placements):
+    print('Benchmark', end='', file=table)
+    for placement in placements:
+        print(',' + placement + ',,', end='', file=table)
+    print(file=table)
+    for placement in placements:
+        print(',fences', 'runtime', 'RSS', sep=delim, end='', file=table)
+    print(file=table)
+
+
 def main():
 #    global parser
     parser = argparse.ArgumentParser()
@@ -130,6 +140,8 @@ def main():
     parser.add_argument('-d', '--dirs', dest='testdirs', nargs='*',
             help='Analyze all benchmarks in the given directories')
     parser.add_argument('benchmarks', nargs='*', help='Analyze these testcases')
+    parser.add_argument('-i', '--iterations', dest='iterations', default=default_iterations,
+            type=int, help='Specify how often a benchmark is tested')
     parser.add_argument('-p', '--placement', dest='placements', nargs='+', required=True,
             choices=['before-memory', 'after-branch', 'every-inst'], help='Location of possible ' +
             'fences')
@@ -149,18 +161,30 @@ def main():
     timeout = args.timeout
     speculation_depth = args.speculation_depth
     debug = args.debug
-    for benchmark in args.benchmarks:
-        if not benchmark.endswith('.ll'):
-            print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
-            continue
-        for placement in args.placements:
-            for choice in args.choices:
-                if args.server:
-                    time.sleep(cooloff)
-                (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
-                if num_fences < 0:
-                    print('the following error occured on', benchmark + ':', runtime,
-                            file=sys.stderr)
+
+    table = open("{}/{}".format(tmpdir, table_filename), "w")
+    print_table_header(table, args.placements)
+
+    for choice in args.choices:
+        for benchmark in args.benchmarks:
+            if not benchmark.endswith('.ll'):
+                print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
+                continue
+            for _ in range(args.iterations):
+                print(benchmark, end='', file=table)
+                for placement in args.placements:
+                    if args.server:
+                        time.sleep(cooloff)
+                    (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
+                    if num_fences < 0:
+                        print('the following error occured on', benchmark, '(' + placement + ',',
+                                choice + '):', runtime, file=sys.stderr)
+                        print(',---,---,---', end='', file=table)
+                    else:
+                        print(delim + str(num_fences), runtime, '{:.1f}'.format(maxRSS), sep=delim, end='',
+                                file=table)
+                print(file=table)
+    table.close()
 
     if args.server:
         # copy generated files to location which is stored onto permanent storage
