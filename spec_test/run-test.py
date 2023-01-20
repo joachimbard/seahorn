@@ -6,9 +6,9 @@ import shutil
 import argparse
 import time
 
-step = "large"
-incremental = "true"
-speculation_depth = 100
+step = 'large'
+incremental = 'true'
+speculation_depth = 0
 repair = True
 debug = False
 default_iterations = 1
@@ -142,6 +142,8 @@ def main():
     parser.add_argument('benchmarks', nargs='*', help='Analyze these testcases')
     parser.add_argument('-i', '--iterations', dest='iterations', default=default_iterations,
             type=int, help='Specify how often a benchmark is tested')
+    parser.add_argument('--non-incremental', dest='non_incremental', default=False,
+            action='store_true', help='Start from scratch after every fence insertion')
     parser.add_argument('-p', '--placement', dest='placements', nargs='+', required=True,
             choices=['before-memory', 'after-branch', 'every-inst'], help='Location of possible ' +
             'fences')
@@ -155,9 +157,12 @@ def main():
 
     if args.testdirs != None:
         sys.exit(f'NOT IMPLEMENTD: Don\'t use neither "-d" nor "--dirs" ({args.testdirs})')
+    global incremental
     global timeout
     global speculation_depth
     global debug
+    if args.non_incremental:
+        incremental = 'false'
     timeout = args.timeout
     speculation_depth = args.speculation_depth
     debug = args.debug
