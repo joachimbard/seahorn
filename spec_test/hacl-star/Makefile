@@ -2,7 +2,7 @@ include ../Makefile.common
 
 INCFLAGS := -I. -Ikaramel/include -Ikaramel/krmllib/dist/minimal/
 
-CFILES := Hacl_Ed25519_sign_test.c Hacl_Curve25519_64_ecdh_test.c Hacl_Curve25519_64_Slow_ecdh_test.c Hacl_Hash_SHA2_hash_224_test.c Hacl_Hash_SHA2_hash_256_test.c
+CFILES := Hacl_Ed25519_sign_test.c Hacl_Curve25519_64_ecdh_test.c Hacl_Curve25519_64_Slow_ecdh_test.c Hacl_Hash_SHA2_hash_224_test.c Hacl_Hash_SHA2_hash_256_test.c Hacl_Chacha20_encrypt_test.c Hacl_Poly1305_32_mac_test.c
 LLFILES := $(CFILES:.c=.ll)
 EXECS:=$(LLFILES:.ll=)
 
