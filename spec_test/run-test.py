@@ -13,7 +13,7 @@ repair = True
 debug = False
 default_iterations = 1
 
-cooloff = 30 # seconds
+cooloff = 60 # seconds
 timecmd = "/usr/bin/time"
 timeout = 0
 
@@ -113,6 +113,9 @@ def run_single_test(llfile, placement, choice):
             print("  " + line, file=sys.stderr)
             return (-1, 'program not secure', '---')
 
+    print('Seahorn processes:')
+    subprocess.run(['pgrep', 'seahorn'])
+
     if not secure:
         print('Program still not secure', file=sys.stderr)
         return (-1, 'fences still missing', '---')
@@ -186,8 +189,8 @@ def main():
                                 choice + '):', runtime, file=sys.stderr)
                         print(',---,---,---', end='', file=table)
                     else:
-                        print(delim + str(num_fences), runtime, '{:.1f}'.format(maxRSS), sep=delim, end='',
-                                file=table)
+                        print(delim + str(num_fences), runtime, '{:.1f}'.format(maxRSS), sep=delim,
+                                end='', file=table)
                 print(file=table)
     table.close()
 
