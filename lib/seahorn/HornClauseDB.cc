@@ -174,14 +174,14 @@ raw_ostream &HornClauseDB::write(raw_ostream &o) const {
 
 bool HornClauseDB::changeFenceRules(SpeculativeInfo::FenceType fenceId, Expr &newRule) {
   std::string name = "fence_" + std::to_string(fenceId);
-  outs() << "search rule for " << name << '\n';
+//  outs() << "search rule for " << name << '\n';
   for (HornRule &rule : m_rules) {
     Expr head = rule.head();
     Expr headDecl = bind::fname(head);
     std::string headName =
         boost::lexical_cast<std::string>(*bind::fname(headDecl));
     if (name.compare(headName) == 0 && !isOpX<TRUE>(rule.body())) {
-      outs() << "remove rule: " << *rule.get() << '\n';
+//      outs() << "remove rule: " << *rule.get() << '\n';
 //      outs() << "head args: ";
 //      for (auto it = head->args_begin(); it != head->args_end(); ++it) {
 //        outs() << **it << ", ";

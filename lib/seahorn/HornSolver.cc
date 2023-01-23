@@ -283,8 +283,8 @@ bool HornSolver::runOnModule(Module &M, HornifyModule &hm, bool reuseCover) {
       specInfo.setFences(m_inserted_fences);
     }
   } else if (m_result) {
-//    if (!InsertFences && PrintAnswer) {
-    if (PrintAnswer) {
+    if (!InsertFences && PrintAnswer) {
+//    if (PrintAnswer) {
       printCex();
     }
 //    static int max_iters = 4;
@@ -347,7 +347,7 @@ bool HornSolver::insertFence(Module &M, HornClauseDB &db, SpeculativeInfo::Fence
     std::time_t timestamp = std::time(nullptr);
     outs() << std::ctime(&timestamp);
     outs() << "insert fence id " << fenceId << "\n";
-    outs() << m_inserted_fences.size() << " fences inserted in total\n";
+    outs() << m_inserted_fences.size() << " fences inserted so far\n";
     outs().flush();
   }
   return changed;
