@@ -1,20 +1,19 @@
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
 
-#include "openssl-poly-aux.h"
+#include "hacl-poly-aux.h"
 
 // print results (big file)
 //#define PRINT
 char output_filename[] = "poly-output.txt";
 
-#define ARRAY_SIZE (1024 * 1024 * 16)
-#define TAG_SIZE (16)
+#define ARRAY_SIZE (1024 * 1024 * 64)
 
 unsigned seed;
 //unsigned char in[ARRAY_SIZE];
 //unsigned char out[ARRAY_SIZE] = {0};
-unsigned char *in;
-unsigned char *out;
+uint8_t *in;
 double tstart = 0.0;
 
 void init_seed(char** arg) {
@@ -29,26 +28,23 @@ size_t get_length() {
   return ARRAY_SIZE;
 }
 
-// TODO
-uint8_t *init_tag();
-
-unsigned char *init_array(bool is_in) {
-  if (is_in) {
-    in = malloc(ARRAY_SIZE);
-    int *p = (int*) in;
-    for (unsigned i = 0; i < ARRAY_SIZE / sizeof(int); ++i) {
-      // put "random" values into 'in'
-      p[i] = rand();
-    }
-    return in;
-  } else {
-    out = calloc(1, ARRAY_SIZE);
-    return out;
+uint8_t *init_array() {
+  in = malloc(ARRAY_SIZE);
+  int *p = (int*) in;
+  for (unsigned i = 0; i < ARRAY_SIZE / sizeof(int); ++i) {
+    // put "random" values into 'in'
+    p[i] = rand();
   }
+  return in;
 }
 
-// TODO
-uint8_t *init_key();
+void init_key(uint8_t *key) {
+  int *p = (int*) key;
+  for (unsigned i = 0; i < KEY_SIZE / sizeof(int); ++i) {
+    // put "random" values into 'key'
+    p[i] = rand();
+  }
+}
 
 void start_clock() {
   struct timespec ts;
@@ -64,12 +60,23 @@ void end_clock() {
   fprintf(stderr, "  clock diff: %.1f\n", tend - tstart);
 }
 
-void display_poly(uint8_t *out) {
-#ifdef PRINT
+void print_array() {
   FILE *f = fopen(output_filename, "a");
-  fprintf(f, "encrypted: 0x%.2x", out[0]);
+  fprintf(f, "array: 0x%.2x", in[0]);
+  for (unsigned i = 1; i < ARRAY_SIZE; ++i) {
+    fprintf(f, " %.2x", in[i]);
+  }
+  fprintf(f, "\n");
+  fclose(f);
+}
+
+void display_poly(uint8_t *tag) {
+#ifdef PRINT
+//  print_array();
+  FILE *f = fopen(output_filename, "a");
+  fprintf(f, "encrypted: 0x%.2x", tag[0]);
   for (unsigned i = 1; i < TAG_SIZE; ++i) {
-    fprintf(f, " %.2x", out[i]);
+    fprintf(f, " %.2x", tag[i]);
   }
   fprintf(f, "\n");
   fclose(f);
