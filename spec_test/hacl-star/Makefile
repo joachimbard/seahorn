@@ -2,7 +2,7 @@ include ../Makefile.common
 
 INCFLAGS := -I. -Ikaramel/include -Ikaramel/krmllib/dist/minimal/
 
-CFILES := Hacl_Ed25519_sign_test.c Hacl_Curve25519_64_ecdh_test.c Hacl_Curve25519_64_Slow_ecdh_test.c Hacl_Hash_SHA2_hash_224_test.c Hacl_Hash_SHA2_hash_256_test.c Hacl_Chacha20_encrypt_test.c Hacl_Poly1305_32_mac_test.c
+CFILES := Hacl_Ed25519_sign.c Hacl_Curve25519_64_ecdh.c Hacl_Curve25519_64_Slow_ecdh.c Hacl_Hash_SHA2_hash_224.c Hacl_Hash_SHA2_hash_256.c Hacl_Chacha20_encrypt.c Hacl_Poly1305_32_mac.c
 LLFILES := $(CFILES:.c=.ll)
 EXECS:=$(LLFILES:.ll=)
 
@@ -12,8 +12,17 @@ EXECS:=$(LLFILES:.ll=)
 %.o: %.c
 	$(CC) $(CFLAGS) $(OPTLVL) -c $< -o $@
 
-$(EXECS): %: %.ll hacl-aux.o
+Hacl_Chacha20_encrypt: Hacl_Chacha20_encrypt.ll hacl-chacha-aux.o
 	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+Hacl_Poly1305_%: Hacl_Poly1305_%.ll hacl-poly-aux.o
+	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+fixed/Hacl_Poly1305_%: fixed/Hacl_Poly1305_%.ll hacl-poly-aux.o
+	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+#$(EXECS): %: %.ll hacl-aux.o
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
 #	$(CC) $(CFLAGS) $(OPTLVL) $^ -o $@
 
 .PHONY: compile
