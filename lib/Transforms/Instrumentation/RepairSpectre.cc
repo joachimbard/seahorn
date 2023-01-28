@@ -99,7 +99,7 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
   BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
   if (!BI || !BI->isConditional()) { return changed; }
   if (specInfo.isFenceID(m_fenceId)) {
-    outs() << "inserting fence with id " << m_fenceId << "\n";
+//    outs() << "inserting fence with id " << m_fenceId << "\n";
     changed = true;
     BasicBlock* thenBB = BI->getSuccessor(0);
     BasicBlock* newThenBB = addFenceBB(thenBB);
@@ -110,7 +110,7 @@ bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
   }
   ++m_fenceId;
   if (specInfo.isFenceID(m_fenceId)) {
-    outs() << "inserting fence with id " << m_fenceId << "\n";
+//    outs() << "inserting fence with id " << m_fenceId << "\n";
     changed = true;
     BasicBlock* elseBB = BI->getSuccessor(1);
     BasicBlock* newElseBB = addFenceBB(elseBB);
