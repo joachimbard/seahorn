@@ -6,6 +6,7 @@ import shutil
 import argparse
 import time
 
+seahorn = '../build/run/bin/sea'
 step = 'large'
 incremental = 'true'
 speculation_depth = 0
@@ -26,6 +27,14 @@ runtime_prefix = "runtime [s]: "
 maxRSS_prefix = "maxRSS [KiB]: "
 swapped_prefix = "swapped out: "
 
+standard_benchmarks = [
+        'openssl/openssl-aes_cbc_encrypt_ct.ll',
+        'openssl/openssl-aes_cbc_encrypt_non-ct.ll',
+        'hacl-star/Hacl_Chacha20_encrypt.ll',
+        'hacl-star/Hacl_Poly1305_32_mac.ll'
+        ]
+
+
 def run_single_test(llfile, placement, choice):
     basename = os.path.basename(llfile[:-len(".ll")])
     outfile = "{}/{}_{}_{}".format(tmpdir, basename, placement, choice)
@@ -38,7 +47,7 @@ def run_single_test(llfile, placement, choice):
 
     repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "{}%U + %S =? %e\n{}%M\n{}%W".format(runtime_prefix, maxRSS_prefix, swapped_prefix),
-            "../build/run/bin/sea", "horn", "--solve",
+            seahorn, 'horn', '--solve',
 #            "--dsa=sea-cs",
 #            "--ztrace=spacer",
             "-o={}.smt2".format(outfile),
@@ -132,6 +141,41 @@ def print_table_header(table, placements):
     print(file=table)
 
 
+def run_all(benchmark_list, placement_list, choice_list, iterations, server):
+    table = open("{}/{}".format(tmpdir, table_filename), "w")
+    print_table_header(table, placement_list)
+
+    for choice in choice_list:
+        for benchmark in benchmark_list:
+            if not benchmark.endswith('.ll'):
+                print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
+                continue
+            for _ in range(iterations):
+                print(benchmark, end='', file=table)
+                for placement in placement_list:
+                    if cooloff > 0:
+                        time.sleep(cooloff)
+                    (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
+                    if num_fences < 0:
+                        print('the following error occured on', benchmark, '(' + placement + ',',
+                                choice + '):', runtime, file=sys.stderr)
+                        print(',---,---,---', end='', file=table)
+                    else:
+                        print(delim + str(num_fences), runtime, '{:.1f}'.format(maxRSS), sep=delim,
+                                end='', file=table)
+                print(file=table)
+    table.close()
+
+    if server:
+        # copy generated files to location which is stored onto permanent storage
+        # Note: make sure that externally (i.e. by another program) the directory is actually stored
+        save_dir = '/tmp/'
+        if not os.path.isdir(save_dir):
+            print(save_dir, 'not a directory')
+        for file in glob.glob(tmpdir + '/*'):
+            shutil.copy(file, save_dir)
+
+
 def main():
 #    global parser
     parser = argparse.ArgumentParser()
@@ -140,8 +184,12 @@ def main():
             'permanent storage')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
             help='In debug mode stdout and stderr are not captured but instead just printed')
+    parser.add_argument('--fast', dest='fast', default=False, action='store_true',
+            help='Don\'t use a cooloff time before every run')
     parser.add_argument('-d', '--dirs', dest='testdirs', nargs='*',
             help='Analyze all benchmarks in the given directories')
+    parser.add_argument('--all', dest='all', default=False, action='store_true',
+            help='Run all standard benchmarks additionally to the explicit given ones')
     parser.add_argument('benchmarks', nargs='*', help='Analyze these testcases')
     parser.add_argument('-i', '--iterations', dest='iterations', default=default_iterations,
             type=int, help='Specify how often a benchmark is tested')
@@ -170,38 +218,14 @@ def main():
     speculation_depth = args.speculation_depth
     debug = args.debug
 
-    table = open("{}/{}".format(tmpdir, table_filename), "w")
-    print_table_header(table, args.placements)
+    benchmarks = args.benchmarks
+    if args.all:
+        benchmarks.extend(standard_benchmarks)
+    if args.fast:
+        global cooloff
+        cooloff = 0
 
-    for choice in args.choices:
-        for benchmark in args.benchmarks:
-            if not benchmark.endswith('.ll'):
-                print('Skipping', benchmark, 'because it does not end with ".ll"', file=sys.stderr)
-                continue
-            for _ in range(args.iterations):
-                print(benchmark, end='', file=table)
-                for placement in args.placements:
-                    if args.server:
-                        time.sleep(cooloff)
-                    (num_fences, runtime, maxRSS) = run_single_test(benchmark, placement, choice)
-                    if num_fences < 0:
-                        print('the following error occured on', benchmark, '(' + placement + ',',
-                                choice + '):', runtime, file=sys.stderr)
-                        print(',---,---,---', end='', file=table)
-                    else:
-                        print(delim + str(num_fences), runtime, '{:.1f}'.format(maxRSS), sep=delim,
-                                end='', file=table)
-                print(file=table)
-    table.close()
-
-    if args.server:
-        # copy generated files to location which is stored onto permanent storage
-        # Note: make sure that externally (i.e. by another program) the directory is actually stored
-        save_dir = '/tmp/'
-        if not os.path.isdir(save_dir):
-            print(save_dir, 'not a directory')
-        for file in glob.glob(tmpdir + '/*'):
-            shutil.copy(file, save_dir)
+    run_all(benchmarks, args.placements, args.choices, args.iterations, args.server)
 
 
 if __name__ == '__main__':
