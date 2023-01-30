@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
 
-#include "openssl-chacha-aux.h"
+#include "hacl-chacha-aux.h"
 
 // print results (big file)
 //#define PRINT
 char output_filename[] = "chacha-output.txt";
 
-#define ARRAY_SIZE (1024 * 1024 * 16)
+#define ARRAY_SIZE (1024 * 1024 * 64)
 
 unsigned seed;
 //unsigned char in[ARRAY_SIZE];
@@ -43,8 +44,26 @@ unsigned char *init_array(bool is_in) {
   }
 }
 
-// TODO
-uint8_t *init_key();
+void init_key(uint8_t *key) {
+  int *p = (int*) key;
+  for (unsigned i = 0; i < KEY_SIZE / sizeof(int); ++i) {
+    // put "random" values into 'key'
+    p[i] = rand();
+  }
+}
+
+void init_n(uint8_t *n) {
+  int *p = (int*) n;
+  for (unsigned i = 0; i < N_SIZE / sizeof(int); ++i) {
+    // put "random" values into 'n'
+    p[i] = rand();
+  }
+}
+
+uint32_t init_ctr() {
+  uint32_t ctr = rand();
+  return ctr;
+}
 
 void start_clock() {
   struct timespec ts;

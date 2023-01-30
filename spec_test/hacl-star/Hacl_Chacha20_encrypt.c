@@ -8,8 +8,10 @@ int main(int argc, char **argv) {
   uint32_t len = get_length();
   uint8_t *out = init_array(false);
   uint8_t *text = init_array(true);
-  uint8_t *key = init_key();
-  uint8_t *n;
+  uint8_t key[KEY_SIZE];
+  init_key(key);
+  uint8_t n[N_SIZE];
+  init_n(n);
   uint32_t ctr = init_ctr();
 
   start_clock();
