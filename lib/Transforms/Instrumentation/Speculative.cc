@@ -247,7 +247,7 @@ bool Speculative::runOnBasicBlock(BasicBlock &BB) {
   if (FencePlacement == FencePlaceOpt::EVERY_INST) {
     changed = true;
     Module *M = BB.getModule();
-    m_Builder->SetInsertPoint(&BB.front());
+    m_Builder->SetInsertPoint(&BB, BB.getFirstInsertionPt());
     Value *globalSpec;
     if (SpeculationDepth <= 0) {
       globalSpec = m_Builder->CreateAlignedLoad(m_globalSpec, 1);
@@ -256,14 +256,14 @@ bool Speculative::runOnBasicBlock(BasicBlock &BB) {
       Value *specCount = m_Builder->CreateAlignedLoad(m_SpecCounter, 4);
       globalSpec = m_Builder->CreateICmpSGT(specCount, m_zero);
     }
-    auto I = BB.begin();
-    if (SpeculationDepth <= 0) {
+    auto I = BB.getFirstInsertionPt();
+    if (SpeculationDepth > 0) {
       ++I; // skip specCount instruction which is created before
     }
+    ++I; // skip globalSpec instruction which is created before
     auto E = BB.end();
     for (; I != E; ++I) {
-      //
-      m_Builder->SetInsertPoint(&*I);
+      m_Builder->SetInsertPoint(&BB, I);
       // TODO: Does it invalidate the iterator 'I' because it inserts instructions?
       insertFenceFunction(M, globalSpec);
     }

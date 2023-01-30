@@ -79,7 +79,8 @@ bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
     }
     return changed;
   }
-  case FencePlaceOpt::AFTER_BRANCH: {
+  case FencePlaceOpt::AFTER_BRANCH:
+  case FencePlaceOpt::EVERY_INST: {
     std::vector<BasicBlock*> BBs;
     for (BasicBlock& BB : F) {
       BBs.push_back(&BB);
@@ -96,31 +97,58 @@ bool RepairSpectre::runOnFunction(Function& F, SpeculativeInfo& specInfo) {
 
 bool RepairSpectre::runOnBasicBlock(BasicBlock &BB, SpeculativeInfo &specInfo) {
   bool changed = false;
-  BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
-  if (!BI || !BI->isConditional()) { return changed; }
-  if (specInfo.isFenceID(m_fenceId)) {
+  if (specInfo.getFencePlacement() == FencePlaceOpt::EVERY_INST) {
+    std::vector<Instruction*> Worklist;
+    auto I = BB.getFirstInsertionPt();
+    auto E = BB.end();
+    for (; I != E; ++I) {
+      if (specInfo.isFenceID(m_fenceId)) {
+        Worklist.push_back(&*I);
+//          outs() << "inserting fence with id " << m_fenceId << "\n";
+      }
+      ++m_fenceId;
+    }
+
+    for (Instruction *I : Worklist) {
+      changed = true;
+      StringRef constraints = "~{dirflag},~{fpsr},~{flags}";
+      InlineAsm *fenceAsm =
+          InlineAsm::get(m_asmTy, "lfence", constraints, true);
+      m_builder->SetInsertPoint(I);
+      m_builder->CreateCall(fenceAsm, None);
+      ++m_insertedFencesNum;
+    }
+
+    return changed;
+  } else {
+    BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
+    if (!BI || !BI->isConditional()) {
+      return changed;
+    }
+    if (specInfo.isFenceID(m_fenceId)) {
 //    outs() << "inserting fence with id " << m_fenceId << "\n";
-    changed = true;
-    BasicBlock* thenBB = BI->getSuccessor(0);
-    BasicBlock* newThenBB = addFenceBB(thenBB);
-    // fix branching
-    BI->setSuccessor(0, newThenBB);
-    BasicBlock *currBB = BI->getParent();
-    thenBB->replacePhiUsesWith(currBB, newThenBB);
-  }
-  ++m_fenceId;
-  if (specInfo.isFenceID(m_fenceId)) {
+      changed = true;
+      BasicBlock *thenBB = BI->getSuccessor(0);
+      BasicBlock *newThenBB = addFenceBB(thenBB);
+      // fix branching
+      BI->setSuccessor(0, newThenBB);
+      BasicBlock *currBB = BI->getParent();
+      thenBB->replacePhiUsesWith(currBB, newThenBB);
+    }
+    ++m_fenceId;
+    if (specInfo.isFenceID(m_fenceId)) {
 //    outs() << "inserting fence with id " << m_fenceId << "\n";
-    changed = true;
-    BasicBlock* elseBB = BI->getSuccessor(1);
-    BasicBlock* newElseBB = addFenceBB(elseBB);
-    // fix branching
-    BI->setSuccessor(1, newElseBB);
-    BasicBlock *currBB = BI->getParent();
-    elseBB->replacePhiUsesWith(currBB, newElseBB);
+      changed = true;
+      BasicBlock *elseBB = BI->getSuccessor(1);
+      BasicBlock *newElseBB = addFenceBB(elseBB);
+      // fix branching
+      BI->setSuccessor(1, newElseBB);
+      BasicBlock *currBB = BI->getParent();
+      elseBB->replacePhiUsesWith(currBB, newElseBB);
+    }
+    ++m_fenceId;
+    return changed;
   }
-  ++m_fenceId;
-  return changed;
 }
 
 BasicBlock* RepairSpectre::addFenceBB(BasicBlock *BB) {
