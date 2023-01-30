@@ -16,13 +16,28 @@ Hacl_Poly1305_256_mac.ll: Hacl_Poly1305_256_mac.c
 	$(CC) $(CFLAGS) $(OPTLVL) -c $< -o $@
 
 Hacl_Chacha20_encrypt: Hacl_Chacha20_encrypt.ll hacl-chacha-aux.o
-	$(CC) $(CFLAGS) -O0 $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+fixed/Hacl_Chacha20_encrypt_%: fixed/Hacl_Chacha20_encrypt_%.ll hacl-chacha-aux.o
+	$(CC) $(CFLAGS) $^ -o $@
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
 
 Hacl_Poly1305_%: Hacl_Poly1305_%.ll hacl-poly-aux.o
-	$(CC) $(CFLAGS) -O0 $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
 
 fixed/Hacl_Poly1305_%: fixed/Hacl_Poly1305_%.ll hacl-poly-aux.o
-	$(CC) $(CFLAGS) -O0 $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+Hacl_Curve25519_%: Hacl_Curve25519_%.ll hacl-aux.o
+	$(CC) $(CFLAGS) $^ -o $@
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
+
+fixed/Hacl_Curve25519_%: fixed/Hacl_Curve25519_%.ll hacl-aux.o
+	$(CC) $(CFLAGS) $^ -o $@
+#	$(CC) $(CFLAGS) -O0 $^ -o $@
 
 #$(EXECS): %: %.ll hacl-aux.o
 #	$(CC) $(CFLAGS) -O0 $^ -o $@
