@@ -12,6 +12,7 @@ incremental = 'true'
 speculation_depth = 0
 repair = True
 debug = False
+quiet = False
 default_iterations = 1
 
 cooloff = 60 # seconds
@@ -45,14 +46,12 @@ def run_single_test(llfile, placement, choice):
     if swap.stdout != "":
         print("Swap enabled.", file=sys.stderr)
 
-    repairfile = "--ofixed={}_fixed.ll".format(outfile) if repair else ""
     cmd = [timecmd, "-f", "{}%U + %S =? %e\n{}%M\n{}%W".format(runtime_prefix, maxRSS_prefix, swapped_prefix),
             seahorn, 'horn', '--solve',
 #            "--dsa=sea-cs",
 #            "--ztrace=spacer",
-            "-o={}.smt2".format(outfile),
-            "--oll={}.ll".format(outfile),
-            repairfile,
+#            "-o={}.smt2".format(outfile),
+#            "--oll={}.ll".format(outfile),
             "--step={}".format(step), "--horn-answer",
             "--horn-tail-simplifier-pve=false", "--horn-subsumption=false",
             "--horn-inline-all",
@@ -63,6 +62,12 @@ def run_single_test(llfile, placement, choice):
             "--fence-placement={}".format(placement),
             "--fence-choice={}".format(choice),
             llfile]
+
+    if not quiet:
+        cmd.extend(['-o={}.smt2'.format(outfile), '--oll={}.ll'.format(outfile)])
+        if repair:
+            cmd.append('--ofixed={}_fixed.ll'.format(outfile))
+
 #    if speculation_depth > 0:
 #        cmd.append('--bv-chc')
 
@@ -184,6 +189,8 @@ def main():
             'permanent storage')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
             help='In debug mode stdout and stderr are not captured but instead just printed')
+    parser.add_argument('-q', '--quiet', dest='quiet', default=False, action='store_true',
+            help='Reduce number of output files')
     parser.add_argument('--fast', dest='fast', default=False, action='store_true',
             help='Don\'t use a cooloff time before every run')
     parser.add_argument('-d', '--dirs', dest='testdirs', nargs='*',
@@ -212,11 +219,13 @@ def main():
     global timeout
     global speculation_depth
     global debug
+    global quiet
     if args.non_incremental:
         incremental = 'false'
     timeout = args.timeout
     speculation_depth = args.speculation_depth
     debug = args.debug
+    quiet = args.quiet
 
     benchmarks = args.benchmarks
     if args.all:
