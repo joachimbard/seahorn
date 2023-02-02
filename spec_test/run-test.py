@@ -77,10 +77,11 @@ def run_single_test(llfile, placement, choice):
         print("Timeout ({}min) expired for {}!".format(timeout, llfile), file=sys.stderr)
         print("Timeout ({}min) expired!".format(timeout), file=open(outfile + ".err", "w"))
         out_str = e.stdout.decode()
-        err_str = e.stderr.decode()
         print(out_str, file=open(outfile + ".out", "w"))
-        print(err_str, file=sys.stderr)
-        print(err_str, file=open(outfile + ".err", "w"))
+        if e.stderr:
+            err_str = e.stderr.decode()
+            print(err_str, file=sys.stderr)
+            print(err_str, file=open(outfile + ".err", "w"))
         # kill the seahorn subprocess
         subprocess.run(["pkill", "seahorn"])
         return (-1, 'timeout', '---')
