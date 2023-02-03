@@ -11,8 +11,8 @@ int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
 //#define PRINT
 char output_filename[] = "aes-output.txt";
 
-#define ARRAY_SIZE (1024 * 1024 * 8 * AES_BLOCK_SIZE)
-//#define ARRAY_SIZE (8 * AES_BLOCK_SIZE)
+//#define ARRAY_SIZE (1024 * 1024 * 8 * AES_BLOCK_SIZE)
+#define ARRAY_SIZE (1024 * 1024 * 16)
 
 unsigned seed;
 //unsigned char in[ARRAY_SIZE];

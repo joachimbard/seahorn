@@ -8,7 +8,7 @@
 //#define PRINT
 char output_filename[] = "poly-output.txt";
 
-#define ARRAY_SIZE (1024 * 1024 * 64)
+#define ARRAY_SIZE (1024 * 1024 * 256)
 
 unsigned seed;
 //unsigned char in[ARRAY_SIZE];
