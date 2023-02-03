@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <limits.h>
+#include <string.h>
 
 // include/openssl/e_os2.h
 #define ossl_inline inline
@@ -454,6 +455,7 @@ struct bn_gencb_st {
         (r)=l&BN_MASK2; \
         }
 
+void BN_RECP_CTX_init(BN_RECP_CTX *recp);
 void BN_MONT_CTX_init(BN_MONT_CTX *ctx);
 
 void bn_init(BIGNUM *a);

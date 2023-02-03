@@ -85,6 +85,212 @@ int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
     return ret;
 }
 
+int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, const BIGNUM *m,
+               BN_CTX *ctx)
+{
+    int ret;
+
+    bn_check_top(a);
+    bn_check_top(p);
+    bn_check_top(m);
+
+    /*-
+     * For even modulus  m = 2^k*m_odd, it might make sense to compute
+     * a^p mod m_odd  and  a^p mod 2^k  separately (with Montgomery
+     * exponentiation for the odd part), using appropriate exponent
+     * reductions, and combine the results using the CRT.
+     *
+     * For now, we use Montgomery only if the modulus is odd; otherwise,
+     * exponentiation using the reciprocal-based quick remaindering
+     * algorithm is used.
+     *
+     * (Timing obtained with expspeed.c [computations  a^p mod m
+     * where  a, p, m  are of the same length: 256, 512, 1024, 2048,
+     * 4096, 8192 bits], compared to the running time of the
+     * standard algorithm:
+     *
+     *   BN_mod_exp_mont   33 .. 40 %  [AMD K6-2, Linux, debug configuration]
+     *                     55 .. 77 %  [UltraSparc processor, but
+     *                                  debug-solaris-sparcv8-gcc conf.]
+     *
+     *   BN_mod_exp_recp   50 .. 70 %  [AMD K6-2, Linux, debug configuration]
+     *                     62 .. 118 % [UltraSparc, debug-solaris-sparcv8-gcc]
+     *
+     * On the Sparc, BN_mod_exp_recp was faster than BN_mod_exp_mont
+     * at 2048 and more bits, but at 512 and 1024 bits, it was
+     * slower even than the standard algorithm!
+     *
+     * "Real" timings [linux-elf, solaris-sparcv9-gcc configurations]
+     * should be obtained when the new Montgomery reduction code
+     * has been integrated into OpenSSL.)
+     */
+
+#define MONT_MUL_MOD
+#define MONT_EXP_WORD
+#define RECP_MUL_MOD
+
+#ifdef MONT_MUL_MOD
+    if (BN_is_odd(m)) {
+# ifdef MONT_EXP_WORD
+        if (a->top == 1 && !a->neg
+            && (BN_get_flags(p, BN_FLG_CONSTTIME) == 0)
+            && (BN_get_flags(a, BN_FLG_CONSTTIME) == 0)
+            && (BN_get_flags(m, BN_FLG_CONSTTIME) == 0)) {
+            BN_ULONG A = a->d[0];
+            ret = BN_mod_exp_mont_word(r, A, p, m, ctx, NULL);
+        } else
+# endif
+            ret = BN_mod_exp_mont(r, a, p, m, ctx, NULL);
+    } else
+#endif
+#ifdef RECP_MUL_MOD
+    {
+        ret = BN_mod_exp_recp(r, a, p, m, ctx);
+    }
+#else
+    {
+        ret = BN_mod_exp_simple(r, a, p, m, ctx);
+    }
+#endif
+
+    bn_check_top(r);
+    return ret;
+}
+
+int BN_mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
+                    const BIGNUM *m, BN_CTX *ctx)
+{
+    int i, j, bits, ret = 0, wstart, wend, window, wvalue;
+    int start = 1;
+    BIGNUM *aa;
+    /* Table of variables obtained from 'ctx' */
+    BIGNUM *val[TABLE_SIZE];
+    BN_RECP_CTX recp;
+
+    if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0
+            || BN_get_flags(a, BN_FLG_CONSTTIME) != 0
+            || BN_get_flags(m, BN_FLG_CONSTTIME) != 0) {
+        /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
+        ERR_raise(ERR_LIB_BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+        return 0;
+    }
+
+    bits = BN_num_bits(p);
+    if (bits == 0) {
+        /* x**0 mod 1, or x**0 mod -1 is still zero. */
+        if (BN_abs_is_word(m, 1)) {
+            ret = 1;
+            BN_zero(r);
+        } else {
+            ret = BN_one(r);
+        }
+        return ret;
+    }
+
+    BN_CTX_start(ctx);
+    aa = BN_CTX_get(ctx);
+    val[0] = BN_CTX_get(ctx);
+    if (val[0] == NULL)
+        goto err;
+
+    BN_RECP_CTX_init(&recp);
+    if (m->neg) {
+        /* ignore sign of 'm' */
+        if (!BN_copy(aa, m))
+            goto err;
+        aa->neg = 0;
+        if (BN_RECP_CTX_set(&recp, aa, ctx) <= 0)
+            goto err;
+    } else {
+        if (BN_RECP_CTX_set(&recp, m, ctx) <= 0)
+            goto err;
+    }
+
+    if (!BN_nnmod(val[0], a, m, ctx))
+        goto err;               /* 1 */
+    if (BN_is_zero(val[0])) {
+        BN_zero(r);
+        ret = 1;
+        goto err;
+    }
+
+    window = BN_window_bits_for_exponent_size(bits);
+    if (window > 1) {
+        if (!BN_mod_mul_reciprocal(aa, val[0], val[0], &recp, ctx))
+            goto err;           /* 2 */
+        j = 1 << (window - 1);
+        for (i = 1; i < j; i++) {
+            if (((val[i] = BN_CTX_get(ctx)) == NULL) ||
+                !BN_mod_mul_reciprocal(val[i], val[i - 1], aa, &recp, ctx))
+                goto err;
+        }
+    }
+
+    start = 1;                  /* This is used to avoid multiplication etc
+                                 * when there is only the value '1' in the
+                                 * buffer. */
+    wvalue = 0;                 /* The 'value' of the window */
+    wstart = bits - 1;          /* The top bit of the window */
+    wend = 0;                   /* The bottom bit of the window */
+
+    if (!BN_one(r))
+        goto err;
+
+    for (;;) {
+        if (BN_is_bit_set(p, wstart) == 0) {
+            if (!start)
+                if (!BN_mod_mul_reciprocal(r, r, r, &recp, ctx))
+                    goto err;
+            if (wstart == 0)
+                break;
+            wstart--;
+            continue;
+        }
+        /*
+         * We now have wstart on a 'set' bit, we now need to work out how bit
+         * a window to do.  To do this we need to scan forward until the last
+         * set bit before the end of the window
+         */
+        wvalue = 1;
+        wend = 0;
+        for (i = 1; i < window; i++) {
+            if (wstart - i < 0)
+                break;
+            if (BN_is_bit_set(p, wstart - i)) {
+                wvalue <<= (i - wend);
+                wvalue |= 1;
+                wend = i;
+            }
+        }
+
+        /* wend is the size of the current window */
+        j = wend + 1;
+        /* add the 'bytes above' */
+        if (!start)
+            for (i = 0; i < j; i++) {
+                if (!BN_mod_mul_reciprocal(r, r, r, &recp, ctx))
+                    goto err;
+            }
+
+        /* wvalue will be an odd number < 2^window */
+        if (!BN_mod_mul_reciprocal(r, r, val[wvalue >> 1], &recp, ctx))
+            goto err;
+
+        /* move the 'window' down further */
+        wstart -= wend + 1;
+        wvalue = 0;
+        start = 0;
+        if (wstart < 0)
+            break;
+    }
+    ret = 1;
+ err:
+    BN_CTX_end(ctx);
+    BN_RECP_CTX_free(&recp);
+    bn_check_top(r);
+    return ret;
+}
+
 int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                     const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *in_mont)
 {
