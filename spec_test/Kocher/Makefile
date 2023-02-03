@@ -4,7 +4,7 @@ CFILES:=$(sort $(wildcard *.c))
 LLFILES:=$(CFILES:.c=.ll)
 
 %.ll: %.c
-	$(CC) -I../../include $(CFLAGS) $(OPTLVL) $< -o $@
+	$(CC) -I../../include $(CFLAGS) -S -emit-llvm $(OPTLVL) $< -o $@
 
 .PHONY: compile
 compile: $(LLFILES)
