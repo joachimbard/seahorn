@@ -355,7 +355,11 @@ bool HornSolver::insertFence(Module &M, HornClauseDB &db, SpeculativeInfo::Fence
 
 void HornSolver::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<HornifyModule>();
-  if (InsertFences) { AU.addRequired<SpeculativeInfoWrapperPass>(); }
+  if (InsertFences) {
+    AU.addRequired<SpeculativeInfoWrapperPass>();
+    AU.setPreservesCFG();
+  }
+//  else { AU.setPreservesAll(); }
   AU.setPreservesAll();
 }
 
@@ -589,7 +593,7 @@ void HornSolver::printInvars(Function &F, HornDbModel &model, HornifyModule &hm)
   outs() << "Function: " << F.getName() << "\n";
 
   // -- not used for now
-  Expr summary = hm.summaryPredicate(F);
+//  Expr summary = hm.summaryPredicate(F);
 //  if (summary) {
 //    outs() << "summary: " << *summary << '\n';
 //  }
